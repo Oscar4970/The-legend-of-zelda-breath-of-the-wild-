@@ -1,59 +1,54 @@
-# Decisión técnica: adoptar una arquitectura tipo GTA IV/Winlator para BOTW de Switch en Android
+# Enfoque de port: recompilación estática como GTA IV — actualizado 2026-10-17
 
-Fecha: 2026-10-17
-Estado: propuesta de arquitectura; **NO implementada ni jugable**.
+**Estado real del proyecto:** APK v0.14 = herramientas de inspección NSO/NRO/MOD0, simulación de reubicaciones y pruebas ARM64 sintéticas. **Todavía no ejecuta homebrew externo ni BOTW.** No presentarlo como port funcional.
 
-## Qué significa "el método GTA IV"
+## Lo que revela el video de GTA IV del usuario
 
-Cuando GTA IV se ejecuta mediante **Winlator** en Android, la idea no es un port de código fuente del juego:
-- Un APK contiene un **entorno de compatibilidad**.
-- Wine implementa interfaces de Windows; Box86/Box64 ayudan a ejecutar el código x86/x64 en Android ARM.
-- DXVK y otros componentes traducen la API gráfica del juego.
-- El usuario aporta legalmente los archivos originales, y el sistema de compatibilidad trata de ejecutar ese programa.
+En el video de 58 segundos se observan Rockstar, GTA IV en pantalla, juego de Niko y una capa de controles táctiles de Xbox. La imagen del juego aparece como una franja horizontal dentro de una grabación vertical. **El video no muestra el identificador del APK**; por lo tanto no acredita de forma concluyente ejecución local, nombre de la aplicación ni cuál edición de GTA IV se usa.
 
-Fuentes: https://github.com/brunodev85/winlator-app/ y https://www.winlator.org/
+Hay una coincidencia muy fuerte con **LibertyRecompAndroid**, que tiene ese tipo de control táctil y documentó en versiones anteriores un problema de pantalla de teléfono en orientación vertical:
 
-No está verificado que el GTA IV concreto observado por el usuario se ejecute precisamente así: podría ser emulación, streaming u otro mecanismo. Para determinar el caso exacto hace falta su nombre/enlace/archivo de origen.
+- https://github.com/vaduur/LibertyRecompAndroid
+- https://github.com/vaduur/LibertyRecompAndroid/releases
+- https://github.com/OZORDI/LibertyRecomp
 
-## Adaptación correspondiente: BOTW (Switch) -> Android
+**Corrección al plan anterior:** LibertyRecompAndroid usa recompilación estática de la versión *Xbox 360* de GTA IV (PowerPC → C++ → aplicación nativa ARM64), una capa de sistema y un renderizador Vulkan. **No usa Wine/Winlator ni emulación completa de Xbox 360.** Winlator sigue siendo otra forma de ejecutar videojuegos PC en Android, pero **NO es la referencia principal de este video**.
 
-| Capa | Análogo Windows/Winlator | Equivalente Switch |
+El repositorio oficial LibertyRecompAndroid advierte que su renderizador está dirigido a **Adreno + Turnip** y que **Samsung Xclipse está fuera de soporte**. Que el video muestre juego en el Galaxy del usuario no demuestra que ese APK concreto funcione allí; podría ser otro fork, driver o solución. Registrar el nombre y versión reales antes de atribuir el método.
+
+## El equivalente práctico para BOTW de Switch
+
+Nuestro objetivo sería un pipeline de **recompilación estática AArch64 → C++ o LLVM IR → compilación nativa arm64-v8a**, junto con una reimplementación compatible de Horizon y de NVN/Maxwell a Vulkan. Como CPU de Switch y teléfono ya son AArch64, recompilarlo no necesariamente da una gran ventaja de CPU; las dificultades reales son ABI, syscall SVC, TLS, sistema de memoria, sincronización, IPC, NVN, shaders y estado del motor.
+
+No es suficiente colocar ROM + APK, ni incorporar el código de ReXGlue para Xbox 360: **ReXGlue fue diseñado para PowerPC/XEX de Xbox**, no para ARM64/NSO. Usarlo requeriría reescribir gran parte de su frontend y runtime.
+
+### Referencias específicas de Switch (estudiar primero)
+
+| Proyecto | Qué aporta | Límites |
 | --- | --- | --- |
-| APK/interfaz | Lanzador Android, controles y archivos | Lanzador Android, selector de contenido legal, controles, registro y telemetría |
-| Código de CPU | Box64 (traducción x86-64 a ARM64) | AArch64 directo **solo cuando seguro y técnicamente viable**; emulación/JIT para las instrucciones y patrones que no pueden ejecutarse directamente |
-| Entorno de SO | Wine / interfaces Win32 | Horizon ABI, kernel SVC, handles, memoria, scheduler, eventos, hilos, archivos, IPC y servicios |
-| Formato binario | PE/Windows | NRO/NSO y otros contenedores relevantes, MOD0, símbolos, REL/RELA/RELR, TLS, dependencias |
-| Gráficos | DirectX -> DXVK -> Vulkan | NVN/Maxwell -> traducción gráfica -> Vulkan; shaders, sincronización, cachés |
-| Audio/entrada | API Windows / XInput | Servicios de audio y HID de Switch -> APIs Android |
-| Compatibilidad | Versiones de Windows, DLL | Versiones y servicios Horizon, módulos del juego y recursos originales |
+| [SuperMarioWonderRecomp](https://github.com/BelmanteGu/SuperMarioWonderRecomp) | Recompiler AArch64→C++, runtime Horizon, traducción NVN→Vulkan, y un proyecto Android real; MIT para su código propio | Es un port de otro juego; exige revisar estabilidad, APIs faltantes, licencias de terceros y compatibilidad Xclipse |
+| [LASRecomp](https://github.com/peiikai/LASRecomp) | Recompilación estática de Link's Awakening Switch, runtime nativo y gráficas; código propio MIT | Android no declarado como plataforma oficialmente compatible en el README |
+| [mk8-recomp](https://github.com/dougchansan/mk8-recomp) | Variante AOT/híbrida para juegos Switch con HLE heredado de suyu | Orientado a Mario Kart 8; no implica capacidad Android/BOTW |
+| [Skyline](https://github.com/skyline-emu/skyline) | Arquitectura histórica de CPU ARM64 nativo con HLE en Android | Descontinuado; licencia y código reutilizable deben revisarse en cada fuente |
 
-**Compartir ARM64 no equivale a poder ejecutar BOTW como aplicación Android.**
-La ABI, las llamadas SVC, el espacio virtual, la seguridad del host y NVN son distintos.
+**Recomendación de base de estudio:** auditar primero `SuperMarioWonderRecomp/recomp`, `runtime`, `runtime/src/nvn`, `android` y `docs/nvn/ANDROID-PORT.md` para determinar qué puede reutilizarse legal y técnicamente en el teléfono con GPU **Samsung Xclipse 550**.
 
-## Aprovechamiento de código abierto
+## Hitos de aceptación
 
-- **Skyline** investigó ejecución de Switch para Android ARMv8, HLE y gráficos. Su proyecto oficial fue descontinuado y retiró el código de ramas controladas por los autores. Los mirrors requieren revisión individual de origen, estado, dependencias y cumplimiento de licencia MPL-2.0; no asumir seguridad ni compatibilidad.
-  - Histórico oficial: https://github.com/skyline-emu/skyline
-- Proyectos activos o forks de la familia de emulación Switch para Android pueden servir para **evaluación comparativa**. No integrar nada sin analizar seguridad, licencias, mantenimiento y coste de mantenimiento.
-- **Winlator** es una referencia para arquitectura de compatibilidad y lanzamiento, **no un cargador de Switch**. No copiar Box64, Wine o DXVK al proyecto sin una necesidad comprobable; no resuelven Horizon/NVN.
+1. **Auditoría de código y licencias.** Compilar componentes propios o librerías abiertas sin juegos comerciales ni claves. Obtener un mapa de componentes reutilizables (AArch64/AOT, ABI, memoria, Horizon HLE, NVN-Vulkan, Android UI), advertencias y pruebas.
+2. **Prototipo AOT reproducible de software propio y autorizado.** Compilar una función y un módulo homebrew ARM64 de código fuente propio para que el pipeline los traduzca y ejecute nativamente en Android, no solo interprete metadatos. Comparar resultados contra ejecución en un entorno independiente.
+3. **Runtime Horizon mínimo:** configurar ABI, handles, hilos, syscalls y salida, y demostrar que el programa de prueba usa servicios; reportar incompatibilidades sin comprometer seguridad del Android anfitrión.
+4. **Gráficos Vulkan en Xclipse:** renderizador compatible, shaders, caché y controles; medir FPS en un homebrew autorizado.
+5. **Evaluación BOTW:** solo con una copia legítima de los datos y un runtime comprobado. No publicar ni subir ejecutables recompilados con código comercial, ROMs, keys o firmware.
 
-## Plan de aceptación, no de numeración de APK
+**No afirmar éxito de BOTW sin iniciar su código original, renderizar gameplay y medir estabilidad.** El port completo podría no ser viable con el tiempo, recursos o compatibilidad disponibles.
 
-1. Conservar los lectores actuales como una utilidad diagnóstica, con fuzzing y análisis de límites.
-2. Comparar contra una base de ejecución Switch ARM64 de código abierto y auditable: licencias, pruebas, servicios, GPU, logs, build Android.
-3. Crear una **muestra homebrew propia mínima y compilada desde fuente**, con una interfaz de terminación/resultados controlada; validar que el ejecutable de Switch original corre en un entorno aislado Android.
-4. Instrumentar la primera llamada no soportada (Horizon SVC / IPC) y resolverla en un emulador de servicios. Nada de desactivar seguridad de Android ni ejecutar binarios externos no confiables sin aislamiento adecuado.
-5. Medir compatibilidad gráfica y estabilidad en el Samsung SM-A576B (Xclipse 550) usando un renderer Vulkan real; no inferir rendimiento de BOTW a partir de demos Vulkan.
-6. Solo después evaluar un dump propio y legítimo de BOTW; sin ROMs, keys, firmware ni contenido del juego dentro del repositorio.
+### Cambio de prioridad respecto a v0.14
+No crear APKs nuevos solo para contar más cabeceras o SVC. La siguiente entrega debe demostrar un **componente real de recompilación/runtime** o un informe técnico de auditoría con pruebas reproducibles y fallos conocidos.
 
-### Obstáculos, riesgos y límites
-
-- Nuestro APK v0.14 aún no implementa un runtime Horizon y **NO arranca un homebrew real**.
-- Un ejecutable de Switch, aun si es ARM64, puede fallar con SVC/IPC/TLS/memoria/scheduler/GPU incompatibles.
-- La simulación RELR de 769 direcciones en una copia **no es ejecución**.
-- Un juego comercial grande requiere compatibilidad Horizon + NVN/Maxwell -> Vulkan. El coste técnico es comparable al de un proyecto de emulación sustancial, no a convertir unas ROMs en APK.
-- Respetar las licencias de los proyectos reutilizados y utilizar solo archivos del juego obtenidos legalmente.
-
-## Próxima decisión
-
-No seguir multiplicando APK que solo cuentan metadatos. Priorizar un **spike de runtime homebrew sin GPU** con criterios de éxito: ejecución controlada, resultado reproducible, diagnósticos de SVC e IPC y aislamiento. Si una plataforma open-source existente ya ofrece esa base, evaluar derivar el proyecto de ella en vez de rehacer todo el sistema.
+### Enlaces de referencia
+- https://github.com/vaduur/LibertyRecompAndroid
+- https://github.com/OZORDI/LibertyRecomp
+- https://github.com/rexglue/rexglue-sdk
+- https://github.com/BelmanteGu/SuperMarioWonderRecomp
+- https://github.com/peiikai/LASRecomp
