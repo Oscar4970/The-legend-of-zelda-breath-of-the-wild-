@@ -22,7 +22,7 @@ jobs:
         with:
           packages: 'platform-tools'
       - name: Install Android SDK 35
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
@@ -37,11 +37,12 @@ jobs:
               names = set(apk.namelist())
               assert 'AndroidManifest.xml' in names
               assert 'classes.dex' in names
+              assert 'lib/arm64-v8a/libbotwgpu.so' in names
               print('Verified AndroidManifest.xml + classes.dex')
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: BOTW-Android-TestLab-NOT-GAME
+          name: BOTW-Android-Vulkan-Test-v03-NOT-GAME
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

@@ -12,6 +12,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 public final class MainActivity extends Activity {
+    private static native String nativeVulkanInfo();
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         ScrollView scroll = new ScrollView(this);
@@ -40,7 +41,14 @@ public final class MainActivity extends Activity {
             }
         }
         if (!vulkan) text.append("Vulkan: no declarado por PackageManager\n");
-        text.append("\nEl indicador Vulkan no confirma que el juego funcione.");
+        text.append("\n");
+        try {
+            System.loadLibrary("botwgpu");
+            text.append(nativeVulkanInfo());
+        } catch (Throwable error) {
+            text.append("Vulkan nativo no disponible: ").append(error.getClass().getSimpleName());
+        }
+        text.append("\n\nEsta prueba NO mide FPS del juego.");
         info.setText(text.toString());
         info.setTextIsSelectable(true);
         body.addView(info);

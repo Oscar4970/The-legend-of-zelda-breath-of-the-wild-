@@ -7,6 +7,8 @@ import android.opengl.Matrix;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.MotionEvent;
+import android.view.View;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 import java.nio.ByteBuffer;
@@ -24,6 +26,10 @@ public final class GraphicsActivity extends Activity {
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
+        getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         surface = new GLSurfaceView(this);
         surface.setEGLContextClientVersion(3);
         surface.setRenderer(renderer);
@@ -39,12 +45,27 @@ public final class GraphicsActivity extends Activity {
         FrameLayout.LayoutParams top = new FrameLayout.LayoutParams(-1, -2, Gravity.TOP);
         layout.addView(info, top);
         TextView hints = new TextView(this);
-        hints.setText("Lado izquierdo: caminar  •  Lado derecho: mover cámara");
+        hints.setText("Izquierda: caminar   •   Derecha: cámara");
         hints.setTextColor(0xffffffff);
         hints.setBackgroundColor(0x99000000);
         hints.setPadding(18, 12, 18, 12);
-        FrameLayout.LayoutParams bottom = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        FrameLayout.LayoutParams bottom = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.LEFT);
         layout.addView(hints, bottom);
+        Button load = new Button(this);
+        load.setText("Carga 1×");
+        load.setTextColor(0xffffffff);
+        load.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff324c62));
+        final int[] multipliers = {1, 4, 12, 24};
+        final int[] index = {0};
+        load.setOnClickListener(v -> {
+            index[0] = (index[0] + 1) % multipliers.length;
+            renderer.drawCopies = multipliers[index[0]];
+            load.setText("Carga " + renderer.drawCopies + "×");
+        });
+        FrameLayout.LayoutParams control = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.RIGHT);
+        control.topMargin = 136;
+        control.rightMargin = 12;
+        layout.addView(load, control);
         renderer.status = text -> runOnUiThread(() -> info.setText(text));
         setContentView(layout);
     }
@@ -111,6 +132,7 @@ public final class GraphicsActivity extends Activity {
         interface Status { void update(String msg); }
         volatile Status status;
         volatile float strafe, forward, yaw = 0.0f, pitch = -0.12f;
+        volatile int drawCopies = 1;
         private float camX = 0, camZ = 10;
         private int program, vbo, vertexCount, vpLocation;
         private int width, height;
@@ -210,13 +232,13 @@ public final class GraphicsActivity extends Activity {
             GLES30.glVertexAttribPointer(0,3,GLES30.GL_FLOAT,false,24,0);
             GLES30.glEnableVertexAttribArray(1);
             GLES30.glVertexAttribPointer(1,3,GLES30.GL_FLOAT,false,24,12);
-            GLES30.glDrawArrays(GLES30.GL_TRIANGLES,0,vertexCount);
+            for(int i=0;i<drawCopies;i++) GLES30.glDrawArrays(GLES30.GL_TRIANGLES,0,vertexCount);
             frameCount++;
             if(now-fpsStart>=1000000000L){
                 int fps=(int)Math.round(frameCount*1.0e9/(now-fpsStart));
                 Status s=status;
                 if(s!=null)s.update("PRUEBA 3D — NO ES ZELDA  •  "+fps+" FPS\n"+gpu+"\n"+
-                                    width+"×"+height+"  •  "+(vertexCount/3)+" triángulos");
+                                    width+"×"+height+"  •  "+((vertexCount/3)*drawCopies)+" triángulos/cuadro ("+drawCopies+"×)");
                 fpsStart=now;frameCount=0;
             }
         }
