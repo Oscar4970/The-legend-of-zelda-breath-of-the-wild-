@@ -143,7 +143,7 @@ int main(){
     assert(!read(malformedRelr).ok);
     pass("reject invalid DT_RELRENT size");
     malformedRelr=withRelr;
-    put64(malformedRelr,kRo+0x388,(1ULL<<7)|1); // beyond .data and BSS
+    put64(malformedRelr,kRo+0x388,(1ULL<<13)|1); // beyond .data and BSS
     hashes(malformedRelr);
     assert(!read(malformedRelr).ok);
     pass("reject RELR bitmap target outside mapped memory");
