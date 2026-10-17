@@ -38,6 +38,10 @@ jobs:
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/synthetic_nso_test.cpp -o /tmp/synthetic_nso_test
           /tmp/synthetic_nso_test
+      - name: Validate synthetic linked AArch64 module
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/linked_nso_test.cpp -o /tmp/linked_nso_test
+          /tmp/linked_nso_test
       - name: Compile test app (NOT Zelda)
         run: gradle --no-daemon :app:assembleDebug --stacktrace
       - name: Check APK
@@ -54,7 +58,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: BOTW-Android-ARM64-Execution-v07-NOT-GAME
+          name: BOTW-Android-ARM64-Linking-v08-NOT-GAME
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

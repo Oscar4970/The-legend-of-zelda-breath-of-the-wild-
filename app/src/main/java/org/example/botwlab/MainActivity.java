@@ -20,6 +20,7 @@ public final class MainActivity extends Activity {
     private static native String nativeInspectNso(int fd);
     private static native String nativeReconstructNso(int fd);
     private static native String nativeRunSyntheticArm64();
+    private static native String nativeRunLinkedArm64();
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         ScrollView scroll = new ScrollView(this);
@@ -93,6 +94,17 @@ public final class MainActivity extends Activity {
             }
         });
         body.addView(execute);
+        Button linked = new Button(this);
+        linked.setText("Probar enlace ARM64: dos funciones y dato externo");
+        linked.setOnClickListener(v -> {
+            try {
+                System.loadLibrary("botwgpu");
+                scanResult.setText(nativeRunLinkedArm64());
+            } catch (Throwable error) {
+                scanResult.setText("No se pudo iniciar la prueba de enlaces: " + error.getClass().getSimpleName());
+            }
+        });
+        body.addView(linked);
         scanResult = new TextView(this);
         scanResult.setPadding(0, 18, 0, 18);
         scanResult.setText("Selecciona un NSO0 sin cifrar de una copia propia. No ejecuta el archivo.");

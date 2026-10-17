@@ -52,3 +52,10 @@ El botón **Ejecutar función ARM64 ficticia (19 + 23)** genera un **NSO0 sinté
 **Seguridad:** la función no lee ejecutables proporcionados por usuarios, no ejecuta código arbitrario, no permite instrucciones de ROM, no desactiva controles de Android y no necesita permisos del sistema. Si Android impide `mprotect`, muestra el error. Cualquier fallo o resultado inesperado debe notificarse con una captura, sin seguir insistiendo.
 
 **Alcance:** esta es únicamente una prueba AArch64/ABI con bytes totalmente sintéticos. No es un cargador de BOTW, no implementa bibliotecas de Switch, reubicación dinámica, ASLR del juego, símbolos, NVN ni servicios de Nintendo. Superar la prueba no garantiza ni estima cuánto falta para un port jugable.
+
+
+## v0.8 — Enlaces relativos y regiones separadas de memoria
+
+La prueba **«Probar enlace ARM64»** reconstruye un archivo NSO0 ficticio que contiene dos funciones AArch64 y un valor constante en `.rodata`. Aplica dos correcciones controladas: una llamada relativa `BL` entre funciones y un acceso `LDR` relativo a una constante. Protege la memoria en tres regiones independientes: código RX, datos constantes R y datos mutables RW. El resultado correcto es `19 + 23 + 7 = 49`.
+
+**Se ejecuta exclusivamente el módulo sintético integrado**, validado por SHA-256 y una lista estricta de instrucciones admitidas. No se ejecutan ROMs o módulos externos. Esta práctica de enlaces relativos no implementa el enlazador dinámico ni los servicios de Switch, y no indica compatibilidad con BOTW.
