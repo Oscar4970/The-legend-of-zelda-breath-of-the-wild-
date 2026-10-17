@@ -151,3 +151,8 @@ El build de GitHub instala `glslang-tools` y `spirv-tools`, compila los shaders 
 En GitHub Actions se obtiene el recompilador [SuperMarioWonderRecomp](https://github.com/BelmanteGu/SuperMarioWonderRecomp) de código abierto **MIT**, fijado a SHA `7c2531d9bdce94506bad9bf53d8a9848b240f111`. Se generan `funcs.h` y `code_000.cpp`, se ejecuta el C++ traducido como test de host y se incorpora al APK arm64-v8a. El botón **«Ejecutar código ARM64 RECOMPILADO REAL (muestra propia)»** llama a esa función y debe devolver el resultado 42.
 
 La app incluye los avisos de licencia y autoría de SwitchGamesRecomp. Los archivos generados no se incorporan al repositorio. **Es la primera prueba del método de recompilación estática real que queremos adaptar de GTA IV a Switch**, aunque todavía no procesa BOTW ni ejecuta sus recursos. El port completo requiere código original legítimo, grandes adaptaciones a Horizon, NVN y compilación de shaders.
+
+
+## Decisión principal para Galaxy A57 (17 de octubre de 2026)
+
+**Ruta elegida: recompilación estática de la edición Switch (AArch64 → C++ → ARM64 Android) con Horizon HLE y NVN→Vulkan.** La muestra v0.18 devolvió 42 en el teléfono; no ejecuta Zelda. No seguiremos creando demos gráficas aisladas como sustituto de progresar el runtime. El siguiente objetivo es un homebrew real recompilado con llamadas al sistema. Detalles, alternativas Wii U, límites de 8 GB RAM y objetivos de estabilidad en [ARQUITECTURA_BOTW_GALAXY_A57.md](ARQUITECTURA_BOTW_GALAXY_A57.md).

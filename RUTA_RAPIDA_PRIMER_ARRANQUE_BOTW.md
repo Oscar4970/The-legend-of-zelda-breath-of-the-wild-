@@ -1,5 +1,7 @@
 # Ruta rápida: primera ejecución de BOTW en Android (sin fingir avances)
 
+> **Actualización v0.18 (2026-10-17):** la muestra AArch64 propia fue recompilada con SwitchGamesRecomp y ejecutada en el Samsung Galaxy A57, devolviendo 42. El paso siguiente sigue siendo un homebrew externo real con un runtime Horizon básico; todavía no se ejecuta BOTW. Véase [ARQUITECTURA_BOTW_GALAXY_A57.md](ARQUITECTURA_BOTW_GALAXY_A57.md).
+
 Actualizado: 2026-10-17. **Objetivo**: ejecutar código auténtico de The Legend of Zelda: Breath of the Wild (Switch) en Android; a largo plazo, lograr el port nativo recompilado y jugable.
 
 **Estado real**: la v0.17 es una prueba gráfica de Vulkan; no carga, recompila ni ejecuta ningún componente de BOTW. No debe contarse como prueba del juego. Este documento sustituye la práctica de aumentar números de versión por cada diagnóstico gráfico.
