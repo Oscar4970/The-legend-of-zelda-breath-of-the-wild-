@@ -63,6 +63,10 @@ jobs:
           curl --fail --location --silent --show-error --retry 2 --max-time 90             --output /tmp/ftpd-classic.nro             https://github.com/mtheall/ftpd/releases/download/v3.2.1/ftpd-classic.nro
           g++ -std=c++17 -Wall -Wextra -Werror -O2             tests/nro_open_homebrew_test.cpp -o /tmp/nro_open_homebrew_test
           /tmp/nro_open_homebrew_test /tmp/ftpd-classic.nro
+      - name: Test graphics baseline requirements based on open source Wonder recomp
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/vulkan_runtime_probe_test.cpp -o /tmp/vulkan_runtime_probe_test
+          /tmp/vulkan_runtime_probe_test
       - name: Compile test app (NOT Zelda)
         run: gradle --no-daemon :app:assembleDebug --stacktrace
       - name: Check APK
@@ -79,7 +83,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: BOTW-Android-NRO-Runtime-Audit-v014-NOT-GAME
+          name: BOTW-Android-Vulkan-Recomp-Audit-v015-NOT-GAME
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

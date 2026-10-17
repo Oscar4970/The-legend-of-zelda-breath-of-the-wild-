@@ -1,6 +1,7 @@
 package org.example.botwlab;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
@@ -17,6 +18,7 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_NSO = 73;
     private TextView scanResult;
     private static native String nativeVulkanInfo();
+    private static native String nativeVulkanRuntimeProbe();
     private static native String nativeInspectNso(int fd);
     private static native String nativeReconstructNso(int fd);
     private static native String nativeRunSyntheticArm64();
@@ -69,6 +71,33 @@ public final class MainActivity extends Activity {
         test.setText("Probar gráficos y pantalla táctil");
         test.setOnClickListener(v -> startActivity(new Intent(this, GraphicsActivity.class)));
         body.addView(test);
+        Button gpuProbe = new Button(this);
+        gpuProbe.setText("Diagnosticar compatibilidad gráfica Vulkan para Switch");
+        gpuProbe.setOnClickListener(v -> {
+            try {
+                System.loadLibrary("botwgpu");
+                StringBuilder report = new StringBuilder(nativeVulkanRuntimeProbe());
+                ActivityManager manager = (ActivityManager)getSystemService(ACTIVITY_SERVICE);
+                if (manager != null) {
+                    ActivityManager.MemoryInfo memory = new ActivityManager.MemoryInfo();
+                    manager.getMemoryInfo(memory);
+                    report.append("\nRAM total Android: ")
+                          .append(memory.totalMem / (1024L * 1024L))
+                          .append(" MiB");
+                    report.append("\nRAM disponible aprox.: ")
+                          .append(memory.availMem / (1024L * 1024L))
+                          .append(" MiB (cambia constantemente)");
+                    report.append("\nMemoria baja del sistema: ")
+                          .append(memory.lowMemory ? "si" : "no");
+                }
+                scanResult.setText(report.toString());
+            } catch (Throwable error) {
+                scanResult.setText("Diagnostico Vulkan no disponible: " +
+                    error.getClass().getSimpleName() +
+                    ". No se modificaron los ajustes del telefono.");
+            }
+        });
+        body.addView(gpuProbe);
         Button select = new Button(this);
         select.setText("Analizar NSO de Switch (solo metadatos)");
         select.setOnClickListener(v -> {

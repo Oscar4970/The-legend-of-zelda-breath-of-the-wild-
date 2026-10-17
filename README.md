@@ -117,3 +117,12 @@ Se añadió **«Analizar requisitos para ejecutar NRO real (no ejecuta)»**. Exa
 Se añadió una estructura C++ de `LoaderConfigEntry` (24 bytes) y validación sintética de las entradas obligatorias MainThreadHandle, AppletType y EndOfList. Eso verifica la **estructura del protocolo, no implementa todavía los servicios ni fabrica handles Horizon**. Este prefiltro nunca ejecuta un NRO externo. GitHub Actions comprueba el salto inicial y su ubicación en un homebrew publicado de manera independiente.
 
 Fuentes: https://switchbrew.org/wiki/Homebrew_ABI y https://switchbrew.org/wiki/SVC y https://github.com/switchbrew/nx-hbloader .
+
+
+## v0.15 — Diagnóstico de GPU para recompilación nativa de Switch
+
+El botón **«Diagnosticar compatibilidad gráfica Vulkan para Switch»** consulta el **driver real del teléfono**, sin ROM ni código de juego. Comprueba Vulkan 1.3, `VkPhysicalDeviceVulkan13Features.dynamicRendering`, disponibilidad de cola gráfica, y realiza una **creación y destrucción de dispositivo lógico Vulkan temporal** con `dynamicRendering` habilitado. También informa ASTC/BC, formatos de profundidad, extensiones opcionales (`VK_EXT_index_type_uint8`, `VK_EXT_depth_clip_control`), propiedades de subgrupo y memoria anunciada por Vulkan y Android. No modifica la configuración del dispositivo ni prueba juegos.
+
+Los criterios de esta prueba se basan en el código de `runtime/src/nvn/nvn_vk.cpp` y el documento `docs/WONDER-ANDROID-OPTIONS.md` del proyecto MIT [SuperMarioWonderRecomp](https://github.com/BelmanteGu/SuperMarioWonderRecomp). Las funciones opcionales pueden contar con rutas de compatibilidad; no son siempre bloqueos. **Pasar la prueba no asegura rendimiento ni ejecución de Super Mario Wonder o Zelda**: faltan el código recompilado, los servicios Horizon, NVN, los shaders Maxwell→SPIR-V y los archivos legítimos de cada juego. El código de estos proyectos no se ha integrado aún.
+
+Ver [AUDITORIA_WONDER_A_BOTW.md](AUDITORIA_WONDER_A_BOTW.md) para decisiones arquitectónicas, dependencias y criterios de éxito.
