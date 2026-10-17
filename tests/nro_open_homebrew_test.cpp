@@ -41,5 +41,11 @@ int main(int argc,char** argv) {
              <<"ASET present="<<(result.assetsPresent?"yes":"no")<<"\n"
              <<"MOD0="<<(result.mod.ok?"parsed":"not parsed")
              <<(result.mod.ok?"":": "+result.mod.error)<<"\n"
+             <<"RELR entries="<<result.mod.relrEntries
+             <<" targets="<<result.mod.relrTargets<<"\n"
              <<"Read-only validation; no execution or imported code.\n";
+    if(!result.mod.ok || result.mod.relrEntries==0 || result.mod.relrTargets==0){
+        std::cerr<<"Expected real homebrew MOD0 compact RELR relocations, none decoded.\n";
+        return 1;
+    }
 }

@@ -7,8 +7,8 @@ android {
         applicationId 'org.example.botwlab'
         minSdk 26
         targetSdk 35
-        versionCode 11
-        versionName '0.11-rel-inventory'
+        versionCode 12
+        versionName '0.12-relr-inventory'
         ndk { abiFilters 'arm64-v8a' }
     }
     externalNativeBuild {

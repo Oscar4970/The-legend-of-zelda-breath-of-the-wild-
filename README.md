@@ -94,3 +94,10 @@ Una prueba de solo lectura con el NRO abierto `ftpd-classic.nro` detectó que al
 ## v0.11 — Inventario REL y etiquetas ELF64
 
 La vista MOD0 ahora también inspecciona las relocaciones `DT_REL` además de `DT_RELA`, mostrando los tipos y valores de todas las etiquetas `.dynamic` encontradas. Esto ayuda a evitar conclusiones incorrectas cuando un módulo no contiene relocaciones RELA. Las nuevas pruebas comprueban una entrada REL válida y un tamaño de entrada inválido. **Es un lector estático: no enlaza ni ejecuta programas.**
+
+
+## v0.12 — Formato compacto RELR verificado
+
+Gracias a la prueba v0.11 con homebrew real se detectó que el NRO publica las etiquetas `DT_RELRSZ=35`, `DT_RELR=36` y `DT_RELRENT=37`. Se agregó un **decodificador de inventario RELR ELF64**: examina entradas de dirección y sus bitmaps de 63 posiciones para contar los destinos de reubicación, comprobando alineación y límites. Nunca modifica la memoria, nunca ejecuta código externo y mantiene límites estrictos de tamaño. GitHub Actions exige ahora detectar entradas y destinos RELR en `ftpd-classic.nro` de código abierto. Incluye pruebas sintéticas de bitmap malformado y destinos fuera de memoria.
+
+Los números de esas etiquetas se contrastaron con Android Bionic y el algoritmo de decodificación con LLVM. Es un avance en el analizador, no un cargador de juego.

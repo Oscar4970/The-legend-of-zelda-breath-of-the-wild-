@@ -121,6 +121,32 @@ int main(){
     hashes(malformedRel);
     assert(!read(malformedRel).ok);
     pass("invalid DT_RELENT rejected");
+    auto withRelr=fixture();
+    dyn(withRelr,8,36,0x1380); // DT_RELR
+    dyn(withRelr,9,35,16);     // DT_RELRSZ two 64-bit words
+    dyn(withRelr,10,37,8);     // DT_RELRENT
+    dyn(withRelr,11,0,0);
+    put64(withRelr,kRo+0x380,0x2000);
+    put64(withRelr,kRo+0x388,7); // bitmap bits 1,2: +8, +16
+    hashes(withRelr);
+    auto packed=read(withRelr);
+    assert(packed.ok && packed.relrEntries==2 && packed.relrTargets==3);
+    pass("RELR direct and bitmap entries: three read-only relocation targets");
+    auto malformedRelr=withRelr;
+    put64(malformedRelr,kRo+0x380,7);
+    hashes(malformedRelr);
+    assert(!read(malformedRelr).ok);
+    pass("reject RELR bitmap without a leading base address");
+    malformedRelr=withRelr;
+    dyn(malformedRelr,10,37,16);
+    hashes(malformedRelr);
+    assert(!read(malformedRelr).ok);
+    pass("reject invalid DT_RELRENT size");
+    malformedRelr=withRelr;
+    put64(malformedRelr,kRo+0x388,(1ULL<<7)|1); // beyond .data and BSS
+    hashes(malformedRelr);
+    assert(!read(malformedRelr).ok);
+    pass("reject RELR bitmap target outside mapped memory");
     auto bad=fixture();
     bad[kText+0x20]='N';hashes(bad);
     assert(!read(bad).ok);pass("invalid MOD0 signature rejected");
@@ -156,5 +182,5 @@ int main(){
     bad[kRo+0x200]='X'; // don't update SHA, must fail at NSO reconstruction.
     auto memory=nsomemory::reconstruct(bad.data(),bad.size());
     assert(!memory.ok);pass("corrupted NSO input blocked by SHA-256 before MOD0");
-    std::cout<<"All 15 MOD0 parser tests passed.\n";
+    std::cout<<"All 19 MOD0 parser tests passed.\n";
 }

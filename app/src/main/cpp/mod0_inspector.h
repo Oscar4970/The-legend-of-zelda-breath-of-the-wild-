@@ -15,7 +15,7 @@ struct Result {
     bool ok=false;
     std::string error;
     std::uint32_t modVa=0, dynamicVa=0;
-    std::uint32_t dynamicEntries=0, relaEntries=0, relEntries=0, importsFound=0;
+    std::uint32_t dynamicEntries=0, relaEntries=0, relEntries=0, relrEntries=0, relrTargets=0, importsFound=0;
     std::vector<std::pair<std::int64_t,std::uint64_t>> dynamicTags;
     std::uint32_t relative=0, globDat=0, jumpSlot=0, abs64=0, other=0;
     std::vector<std::string> needed;
@@ -72,10 +72,12 @@ struct Dynamic {
     std::uint64_t strtab=0,strsz=0,symtab=0,syment=0;
     std::uint64_t rela=0,relasz=0,relaent=0;
     std::uint64_t rel=0,relsz=0,relent=0;
+    std::uint64_t relr=0,relrsz=0,relrent=0;
     std::uint64_t jmprel=0,pltrelsz=0,pltrel=0;
     bool seenStrtab=false,seenStrsz=false,seenSymtab=false,seenSyment=false;
     bool seenRela=false,seenRelasz=false,seenRelaent=false;
     bool seenRel=false,seenRelsz=false,seenRelent=false;
+    bool seenRelr=false,seenRelrsz=false,seenRelrent=false;
     bool seenJmprel=false,seenPltrelsz=false,seenPltrel=false;
     std::vector<std::uint64_t> neededOffsets;
 };
@@ -150,6 +152,12 @@ inline Result parse(const nsomemory::Image& image) {
                 d.seenRelsz=true;d.relsz=value;break;
             case 19: if(d.seenRelent){result.error="DT_RELENT duplicado.";return result;}
                 d.seenRelent=true;d.relent=value;break;
+            case 35: if(d.seenRelrsz){result.error="DT_RELRSZ duplicado.";return result;}
+                d.seenRelrsz=true;d.relrsz=value;break;
+            case 36: if(d.seenRelr){result.error="DT_RELR duplicado.";return result;}
+                d.seenRelr=true;d.relr=value;break;
+            case 37: if(d.seenRelrent){result.error="DT_RELRENT duplicado.";return result;}
+                d.seenRelrent=true;d.relrent=value;break;
             case 23: if(d.seenJmprel){result.error="DT_JMPREL duplicado.";return result;}
                 d.seenJmprel=true;d.jmprel=value;break;
             case 2: if(d.seenPltrelsz){result.error="DT_PLTRELSZ duplicado.";return result;}
@@ -234,6 +242,46 @@ inline Result parse(const nsomemory::Image& image) {
         result.error="DT_JMPREL requiere DT_PLTREL=RELA.";return result;
     }
     if(!relocations(d.jmprel,d.pltrelsz,d.seenJmprel,d.pltrel==17?16:24))return result;
+    // ELF64 RELR compact relative relocations. Read and validate only:
+    // an even entry is one relocation address; following odd bitmap entries
+    // encode up to 63 more addresses in successive 8-byte words.
+    if(d.seenRelr || d.seenRelrsz || d.seenRelrent){
+        if(!d.seenRelr || !d.seenRelrsz || !d.seenRelrent ||
+           d.relrent!=8 || d.relrsz%8 || d.relrsz>8192*8ULL ||
+           (d.relrsz!=0 && !at(image,d.relr,d.relrsz))) {
+            result.error="Tags DT_RELR incompletos o tabla RELR fuera de limites.";return result;
+        }
+        std::uint64_t base=0;
+        bool hasBase=false;
+        for(std::uint64_t index=0;index<d.relrsz/8;index++){
+            const auto* p=at(image,d.relr+index*8,8);
+            if(!p){result.error="Entrada RELR truncada.";return result;}
+            const auto entry=u64(p);
+            ++result.relrEntries;
+            if((entry&1)==0){
+                if((entry&7)!=0 || !at(image,entry,8,true)) {
+                    result.error="Destino RELR directo fuera de memoria o no alineado.";return result;
+                }
+                ++result.relrTargets;
+                base=entry+8;
+                hasBase=true;
+            }else{
+                if(!hasBase){
+                    result.error="Bitmap RELR sin direccion inicial.";return result;
+                }
+                const auto bitmap=entry>>1;
+                for(std::uint64_t bit=0;bit<63;bit++){
+                    if((bitmap & (1ULL<<bit))==0)continue;
+                    const auto target=base+bit*8;
+                    if(!at(image,target,8,true)){
+                        result.error="Destino de bitmap RELR fuera de memoria.";return result;
+                    }
+                    ++result.relrTargets;
+                }
+                base+=63*8;
+            }
+        }
+    }
     result.ok=true;
     return result;
 }
@@ -244,7 +292,9 @@ inline std::string report(const Result& r) {
        "\n.dynamic virtual: "+std::to_string(r.dynamicVa)+
        "\nEntradas dinamicas: "+std::to_string(r.dynamicEntries)+
        "\nRelocaciones RELA: "+std::to_string(r.relaEntries)+
-       "\nRelocaciones REL: "+std::to_string(r.relEntries);
+       "\nRelocaciones REL: "+std::to_string(r.relEntries)+
+       "\nEntradas RELR: "+std::to_string(r.relrEntries)+
+       "\nDestinos RELR: "+std::to_string(r.relrTargets);
     s+="\nRELATIVE: "+std::to_string(r.relative)+
        " | GLOB_DAT: "+std::to_string(r.globDat)+
        "\nJUMP_SLOT: "+std::to_string(r.jumpSlot)+
