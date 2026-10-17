@@ -38,3 +38,8 @@ El resultado se muestra solo en la pantalla y el archivo no se sube, almacena ni
 ## v0.5 — Descompresión y memoria aislada NSO
 
 El nuevo botón **Reconstruir imagen NSO** lee archivos locales NSO0 de hasta **16 MiB**, reconstruye secciones .text/.rodata/.data en un búfer separado, utiliza un decodificador de bloques LZ4 con comprobaciones de límites y inicializa BSS con ceros. La imagen nunca se marca ejecutable y se descarta tras mostrar un resumen; no implementa carga de relocaciones, servicios de Switch, NVN ni arranque de BOTW. SHA-256 no se verifica. Las pruebas utilizan archivos sintéticos sin contenido de Nintendo.
+
+
+## v0.6 — Integridad de secciones NSO0
+
+Cuando una cabecera NSO0 marca una sección con hash obligatorio, el laboratorio calcula SHA-256 sobre la sección **ya descomprimida** y rechaza el archivo si el resultado no coincide con el hash de la cabecera. Para mantener el alcance explícito, se rechaza la nueva compresión ZBIC, que no implementamos. Esto **no verifica firmas digitales ni autenticidad del juego**. Incluye pruebas SHA-256 con vectores conocidos, pruebas de corrupción y descompresión previas. Se ajustó la pantalla inicial para respetar los márgenes del sistema en versiones recientes de Android.

@@ -2,6 +2,7 @@
 // Safe, bounded reconstruction of a synthetic NSO0 memory image.
 // This loader does NOT execute instructions or reproduce Nintendo Switch services.
 #include "nso_format.h"
+#include "sha256.h"
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -17,6 +18,7 @@ constexpr std::uint64_t kMaxSegmentBytes=8ULL*1024*1024;
 constexpr std::uint64_t kMaxBssBytes=4ULL*1024*1024;
 struct Image {
     bool ok=false;
+    std::uint32_t hashChecks=0;
     std::string error;
     std::uint32_t base=0;
     std::array<std::uint32_t,3> sectionOffsets{};
@@ -73,6 +75,7 @@ inline Image reconstruct(const std::uint8_t* file,std::size_t fileSize) {
     const auto info=nso::inspect(file,std::min(fileSize,nso::kHeaderSize),
                                  static_cast<std::uint64_t>(fileSize));
     if(!info.valid){image.error=info.reason;return image;}
+    if((info.flags & (1u<<7)) != 0){image.error="Compresion ZBIC no soportada.";return image;}
     std::uint64_t lo=std::numeric_limits<std::uint64_t>::max(),hi=0,total=0;
     bool present=false;
     for(int i=0;i<3;i++){
@@ -128,6 +131,15 @@ inline Image reconstruct(const std::uint8_t* file,std::size_t fileSize) {
             }
         }else{
             std::memcpy(dest,src,s.memSize);
+        }
+        if(s.hashRequired){
+            // NSO0 stores SHA-256 of the DECOMPRESSED section at 0xA0 + 0x20*i.
+            const auto hash=digest256::hash(dest,s.memSize);
+            if(!digest256::same(hash,file+0xA0+0x20*i)){
+                image.error="SHA-256 de seccion NSO no coincide: posible archivo corrupto.";
+                image.bytes.clear();return image;
+            }
+            ++image.hashChecks;
         }
     }
     image.bssLength=info.bssSize;

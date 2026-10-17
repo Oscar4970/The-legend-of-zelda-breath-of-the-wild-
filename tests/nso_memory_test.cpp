@@ -52,5 +52,36 @@ int main(){
     assert(!nsomemory::lz4Block(reinterpret_cast<const std::uint8_t*>("\x10Q"),2,
                                  reinterpret_cast<std::uint8_t*>(bad.data()),0));
     std::cout<<"PASS: output overrun rejected\n";
-    std::cout<<"All 8 NSO memory tests passed.\n";
+
+    const auto abc=digest256::hash(reinterpret_cast<const std::uint8_t*>("abc"),3);
+    assert(digest256::asHex(abc)=="ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    const auto empty=digest256::hash(reinterpret_cast<const std::uint8_t*>(""),0);
+    assert(digest256::asHex(empty)=="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    std::cout<<"PASS: FIPS SHA-256 known vectors\n";
+    auto hashed=f;
+    wr(hashed,0xc,1|8|16|32);
+    const std::array<std::array<std::uint8_t,8>,3> sections={{{{'A','B','A','B','A','B','A','B'}},
+                                                             {{'R','E','A','D',0,0,0,0}},
+                                                             {{'D','A','T','A',0,0,0,0}}}};
+    const std::size_t hashes[]={8,4,4};
+    for(int i=0;i<3;i++){
+        auto h=digest256::hash(sections[i].data(),hashes[i]);
+        std::memcpy(hashed.data()+0xA0+i*32,h.data(),32);
+    }
+    const auto verified=nsomemory::reconstruct(hashed.data(),hashed.size());
+    assert(verified.ok && verified.hashChecks==3);
+    std::cout<<"PASS: all three hashes validated after decompression\n";
+    hashed[0x110]^=1;
+    const auto corrupted=nsomemory::reconstruct(hashed.data(),hashed.size());
+    assert(!corrupted.ok && corrupted.error.find("SHA-256")!=std::string::npos);
+    std::cout<<"PASS: corrupted section rejected by SHA-256\n";
+    auto noHash=sample();
+    wr(noHash,0xc,1|8);
+    assert(!nsomemory::reconstruct(noHash.data(),noHash.size()).ok);
+    std::cout<<"PASS: missing expected hash rejected\n";
+    auto newer=sample();
+    wr(newer,0xc,1|0x80);
+    assert(!nsomemory::reconstruct(newer.data(),newer.size()).ok);
+    std::cout<<"PASS: unsupported ZBIC explicitly rejected\n";
+    std::cout<<"All 13 NSO memory tests passed.\n";
 }

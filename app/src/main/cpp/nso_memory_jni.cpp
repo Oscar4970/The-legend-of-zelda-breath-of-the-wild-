@@ -36,7 +36,8 @@ Java_org_example_botwlab_MainActivity_nativeReconstructNso(JNIEnv* env,jclass,ji
           <<"\nSecciones: "<<memory.sectionLengths[0]<<", "
           <<memory.sectionLengths[1]<<", "<<memory.sectionLengths[2]
           <<"\nBSS: "<<memory.bssLength<<" bytes (inicializados a cero)"
+          <<"\nHashes SHA-256 verificados: "<<memory.hashChecks
           <<"\n\nIMPORTANTE: memoria aislada, no ejecuta instrucciones ARM64, "
-          <<"no verifica hashes ni implementa servicios Switch o NVN.";
+          <<"no verifica firmas digitales ni implementa servicios Switch o NVN.";
     return env->NewStringUTF(report.str().c_str());
 }
