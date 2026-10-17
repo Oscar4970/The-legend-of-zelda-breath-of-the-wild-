@@ -18,6 +18,7 @@ public final class MainActivity extends Activity {
     private TextView scanResult;
     private static native String nativeVulkanInfo();
     private static native String nativeInspectNso(int fd);
+    private static native String nativeReconstructNso(int fd);
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         ScrollView scroll = new ScrollView(this);
@@ -70,6 +71,15 @@ public final class MainActivity extends Activity {
             startActivityForResult(pick, REQUEST_NSO);
         });
         body.addView(select);
+        Button reconstruct = new Button(this);
+        reconstruct.setText("Reconstruir imagen NSO (máx. 16 MiB, no ejecuta)");
+        reconstruct.setOnClickListener(v -> {
+            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            pick.addCategory(Intent.CATEGORY_OPENABLE);
+            pick.setType("*/*");
+            startActivityForResult(pick, 74);
+        });
+        body.addView(reconstruct);
         scanResult = new TextView(this);
         scanResult.setPadding(0, 18, 0, 18);
         scanResult.setText("Selecciona un NSO0 sin cifrar de una copia propia. No ejecuta el archivo.");
@@ -80,13 +90,15 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != REQUEST_NSO || resultCode != RESULT_OK || data == null) return;
+        if ((requestCode != REQUEST_NSO && requestCode != 74) || resultCode != RESULT_OK || data == null) return;
         Uri uri = data.getData();
         if (uri == null) return;
         try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(uri, "r")) {
             if (descriptor == null) throw new IllegalStateException("No fue posible abrir el archivo.");
             System.loadLibrary("botwgpu");
-            scanResult.setText(nativeInspectNso(descriptor.getFd()));
+            scanResult.setText(requestCode == 74
+                ? nativeReconstructNso(descriptor.getFd())
+                : nativeInspectNso(descriptor.getFd()));
         } catch (Exception | LinkageError error) {
             scanResult.setText("No se pudo analizar el archivo: " + error.getClass().getSimpleName());
         }

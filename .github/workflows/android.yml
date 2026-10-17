@@ -30,6 +30,10 @@ jobs:
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/nso_format_test.cpp -o /tmp/nso_format_test
           /tmp/nso_format_test
+      - name: Test bounded NSO LZ4 and image reconstruction
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/nso_memory_test.cpp -o /tmp/nso_memory_test
+          /tmp/nso_memory_test
       - name: Compile test app (NOT Zelda)
         run: gradle --no-daemon :app:assembleDebug --stacktrace
       - name: Check APK
@@ -46,7 +50,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: BOTW-Android-NSO-Inspector-v04-NOT-GAME
+          name: BOTW-Android-NSO-Memory-v05-NOT-GAME
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

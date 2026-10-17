@@ -33,3 +33,8 @@ Identifica la firma NSO0, nombre de secciones, tamaños, offsets, flags de compr
 El resultado se muestra solo en la pantalla y el archivo no se sube, almacena ni modifica. Por seguridad, el analizador limita los archivos a 512 MiB. Si se elige un archivo sin descifrar, se rechazará. Los tests automáticos usan un NSO **sintético**, sin ninguna ROM.
 
 **Limitación:** este avance analiza el formato de ejecutable de Switch; no implementa los servicios del sistema, el cargador de memoria, NVN/Vulkan ni el motor BOTW. No es un port jugable.
+
+
+## v0.5 — Descompresión y memoria aislada NSO
+
+El nuevo botón **Reconstruir imagen NSO** lee archivos locales NSO0 de hasta **16 MiB**, reconstruye secciones .text/.rodata/.data en un búfer separado, utiliza un decodificador de bloques LZ4 con comprobaciones de límites y inicializa BSS con ceros. La imagen nunca se marca ejecutable y se descarta tras mostrar un resumen; no implementa carga de relocaciones, servicios de Switch, NVN ni arranque de BOTW. SHA-256 no se verifica. Las pruebas utilizan archivos sintéticos sin contenido de Nintendo.
