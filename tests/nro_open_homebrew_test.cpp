@@ -19,6 +19,21 @@ int main(int argc,char** argv) {
         std::cerr<<"Open-source homebrew NRO rejected: "<<result.error<<"\n";
         return 1;
     }
+    const std::uint32_t headerOffset=nroinspect::u32(data.data()+4);
+    if(headerOffset+0x1c<data.size() && headerOffset>=0x80) {
+        const auto* hdr=data.data()+headerOffset;
+        auto disp=[&](std::size_t off){
+            const auto signedOffset=static_cast<std::int32_t>(nroinspect::u32(hdr+off));
+            return static_cast<std::int64_t>(headerOffset)+signedOffset;
+        };
+        std::cout<<"MOD0 diagnostic: off="<<headerOffset
+                 <<" sig="<<std::string(reinterpret_cast<const char*>(hdr),4)
+                 <<" dynamic="<<disp(4)
+                 <<" bssStart="<<disp(8)
+                 <<" bssEnd="<<disp(12)
+                 <<" dataEnd="<<(result.offsets[2]+result.lengths[2])
+                 <<" bssLength="<<result.bssSize<<"\n";
+    }
     std::cout<<"PASS: public independent open-source NRO0, "
              <<data.size()<<" source bytes\n"
              <<"Text="<<result.lengths[0]<<" Ro="<<result.lengths[1]
