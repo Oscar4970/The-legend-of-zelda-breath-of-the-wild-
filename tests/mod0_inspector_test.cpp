@@ -97,6 +97,13 @@ int main(){
     assert(result.relative==1 && result.globDat==1);
     pass("MOD0 parsed, DT_NEEDED dependency and ELF64 AArch64 relocations inventoried");
 
+    auto aligned=fixture();
+    // MOD0 BSS may start inside initialized .data and end before the mapping end.
+    put32(aligned,kText+0x28,0x2030-0x20);
+    put32(aligned,kText+0x2c,0x2058-0x20);
+    hashes(aligned);
+    assert(read(aligned).ok);
+    pass("MOD0 BSS interval within data+BSS mapping accepted");
     auto bad=fixture();
     bad[kText+0x20]='N';hashes(bad);
     assert(!read(bad).ok);pass("invalid MOD0 signature rejected");
@@ -132,5 +139,5 @@ int main(){
     bad[kRo+0x200]='X'; // don't update SHA, must fail at NSO reconstruction.
     auto memory=nsomemory::reconstruct(bad.data(),bad.size());
     assert(!memory.ok);pass("corrupted NSO input blocked by SHA-256 before MOD0");
-    std::cout<<"All 12 MOD0 parser tests passed.\n";
+    std::cout<<"All 13 MOD0 parser tests passed.\n";
 }

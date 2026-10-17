@@ -99,12 +99,17 @@ inline Result parse(const nsomemory::Image& image) {
        !addRelative(modVa,static_cast<std::uint32_t>(bssEndRaw),bssEnd)) {
         result.error="Offsets relativos MOD0 invalidos.";return result;
     }
-    // If MOD0 advertises BSS, it should match the reconstructed .data+BSS boundary.
-    const std::uint64_t expectedBss=std::uint64_t(image.base)+image.bssOffset;
+    // Real-world NROs may declare MOD0 BSS starting within the initialized data
+    // range (with a partially overlapping tail). This is read-only inspection:
+    // accept only intervals entirely within the modeled .data + BSS allocation.
+    const std::uint64_t dataStart=std::uint64_t(image.base)+image.sectionOffsets[2];
+    const std::uint64_t dataEnd=dataStart+image.sectionLengths[2];
+    const std::uint64_t mappedEnd=std::uint64_t(image.base)+image.bssOffset+image.bssLength;
     if(bssStart>bssEnd ||
-       (image.bssLength && (bssStart!=expectedBss ||
-          bssEnd!=expectedBss+image.bssLength))) {
-        result.error="Limites BSS de MOD0 inconsistentes.";return result;
+       (image.bssLength &&
+          (bssStart<dataStart || bssStart>dataEnd ||
+           bssEnd<dataEnd || bssEnd>mappedEnd))) {
+        result.error="Limites BSS de MOD0 fuera de memoria mapeada.";return result;
     }
     result.modVa=static_cast<std::uint32_t>(modVa);
     result.dynamicVa=static_cast<std::uint32_t>(dynamicVa);
