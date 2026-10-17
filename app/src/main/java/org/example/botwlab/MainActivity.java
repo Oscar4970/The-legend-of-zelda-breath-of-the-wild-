@@ -22,6 +22,7 @@ public final class MainActivity extends Activity {
     private static native String nativeOffscreenGpuCheck();
     private static native String nativeTriangleGpuCheck();
     private static native String nativeRunRecompiledArm64();
+    private static native String nativeRunCompiledHomebrew();
     private static native String nativeInspectNso(int fd);
     private static native String nativeReconstructNso(int fd);
     private static native String nativeRunSyntheticArm64();
@@ -156,6 +157,21 @@ public final class MainActivity extends Activity {
             }
         });
         body.addView(recompTest);
+        Button programTest = new Button(this);
+        programTest.setText("Probar PROGRAMA C ARM64 RECOMPILADO (funciones, memoria y servicios)");
+        programTest.setOnClickListener(v -> {
+            programTest.setEnabled(false);
+            try {
+                System.loadLibrary("botwgpu");
+                scanResult.setText(nativeRunCompiledHomebrew());
+            } catch (Throwable error) {
+                scanResult.setText("Programa recompilado no disponible: " +
+                    error.getClass().getSimpleName());
+            } finally {
+                programTest.setEnabled(true);
+            }
+        });
+        body.addView(programTest);
         Button select = new Button(this);
         select.setText("Analizar NSO de Switch (solo metadatos)");
         select.setOnClickListener(v -> {

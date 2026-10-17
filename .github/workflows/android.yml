@@ -95,6 +95,16 @@ jobs:
             app/src/main/cpp/aot_generated/output/code_000.cpp \
             -o /tmp/test_real_static_recomp
           /tmp/test_real_static_recomp
+          # Real Clang->ARM64->NSO->upstream recompiler, then CPU + .data/.bss + test SVC.
+          g++ -std=c++20 -O2 -Wall -Wextra -pthread \
+            -I app/src/main/cpp/aot_generated/include \
+            -I app/src/main/cpp/aot_generated \
+            -I recomp_aot \
+            recomp_aot/homebrew_host_test.cpp \
+            recomp_aot/homebrew_test_runtime.cpp \
+            app/src/main/cpp/aot_generated/homebrew/code_000.cpp \
+            -o /tmp/test_compiled_c_guest
+          /tmp/test_compiled_c_guest
       - name: Compile test app (NOT Zelda)
         run: gradle --no-daemon :app:assembleDebug --stacktrace
       - name: Check APK
@@ -111,7 +121,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: BOTW-Android-StaticRecomp-v018-NOT-GAME
+          name: BOTW-Android-HomebrewC-Recomp-v019-NOT-GAME
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

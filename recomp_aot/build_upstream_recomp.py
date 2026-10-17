@@ -50,6 +50,35 @@ def main():
         raise RuntimeError("Upstream did not recompile the fixture entry correctly")
     (output/"include"/"nx"/"cpu.h").write_bytes(
         (vendor/"runtime"/"include"/"nx"/"cpu.h").read_bytes())
+    # New v0.19: compile independent C SOURCE (not manually encoded ARM opcodes)
+    # to an actual freestanding ELF64/AArch64 using Clang and LLD.
+    source=ROOT/"recomp_aot"/"homebrew_source.c"
+    linker=ROOT/"recomp_aot"/"homebrew.ld"
+    obj=ROOT/"recomp_aot"/"_build_fixture"/"homebrew.o"
+    elf=ROOT/"recomp_aot"/"_build_fixture"/"homebrew.elf"
+    homebrew_nso=ROOT/"recomp_aot"/"_build_fixture"/"homebrew.nso"
+    call("clang","--target=aarch64-none-elf","-ffreestanding","-std=c11","-O1","-g0",
+         "-fno-stack-protector","-fno-unwind-tables","-fno-asynchronous-unwind-tables",
+         "-fno-builtin","-fno-pic","-fno-pie","-ffunction-sections","-fdata-sections",
+         "-c",source,"-o",obj)
+    call("clang","--target=aarch64-none-elf","-nostdlib","-fuse-ld=lld",
+         f"-Wl,-T,{linker}","-Wl,--build-id=none",obj,"-o",elf)
+    homebrew_out=output/"homebrew"
+    homebrew_out.mkdir(parents=True,exist_ok=True)
+    call(sys.executable,ROOT/"recomp_aot"/"package_homebrew_nso.py",
+         elf,homebrew_nso,output/"homebrew_fixture.h")
+    call(sys.executable,"-m","recomp",homebrew_nso,homebrew_out,
+         "--name","homebrew",cwd=vendor)
+    generated=(homebrew_out/"code_000.cpp").read_text(encoding="utf-8")
+    report=(homebrew_out/"report.txt").read_text(encoding="utf-8")
+    if "void homebrew_00000040(" not in generated or generated.count("void homebrew_")<2:
+        raise RuntimeError("Upstream recompiler missed C-compiled entry/callee")
+    if "nx::unimpl(" in generated or not re.search(r"unhandled 0\\b",report):
+        raise RuntimeError("Unsupported AArch64 instructions in C-compiled test; see report")
+    if "nx::svc(" not in generated:
+        raise RuntimeError("Synthetic service instruction was not recompiled")
+    print("PASS: original C -> clang AArch64 ELF -> NSO-format -> upstream C++ with calls/memory/SVC")
+
     # Retain full upstream license in the APK and repository attribution.
     notice="SwitchGamesRecomp reference CPU code and AArch64 recompiler:\n"
     notice+=f"{UPSTREAM}\nPinned commit: {PINNED_SHA}\n\n"
