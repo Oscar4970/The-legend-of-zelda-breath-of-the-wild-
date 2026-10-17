@@ -42,6 +42,10 @@ jobs:
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/linked_nso_test.cpp -o /tmp/linked_nso_test
           /tmp/linked_nso_test
+      - name: Test read-only MOD0 ELF64 dynamic and relocation inspector
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/mod0_inspector_test.cpp -o /tmp/mod0_inspector_test
+          /tmp/mod0_inspector_test
       - name: Compile test app (NOT Zelda)
         run: gradle --no-daemon :app:assembleDebug --stacktrace
       - name: Check APK
@@ -58,7 +62,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: BOTW-Android-ARM64-Linking-v08-NOT-GAME
+          name: BOTW-Android-MOD0-Inspector-v09-NOT-GAME
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

@@ -59,3 +59,14 @@ El botón **Ejecutar función ARM64 ficticia (19 + 23)** genera un **NSO0 sinté
 La prueba **«Probar enlace ARM64»** reconstruye un archivo NSO0 ficticio que contiene dos funciones AArch64 y un valor constante en `.rodata`. Aplica dos correcciones controladas: una llamada relativa `BL` entre funciones y un acceso `LDR` relativo a una constante. Protege la memoria en tres regiones independientes: código RX, datos constantes R y datos mutables RW. El resultado correcto es `19 + 23 + 7 = 49`.
 
 **Se ejecuta exclusivamente el módulo sintético integrado**, validado por SHA-256 y una lista estricta de instrucciones admitidas. No se ejecutan ROMs o módulos externos. Esta práctica de enlaces relativos no implementa el enlazador dinámico ni los servicios de Switch, y no indica compatibilidad con BOTW.
+
+
+## v0.9 — Inspección MOD0/ELF64 de Switch (solo lectura)
+
+La función **«Inspeccionar MOD0, bibliotecas y enlaces de Switch»** permite seleccionar un archivo NSO0 *sin cifrar* de origen legítimo. Después de validar sus secciones y hashes requeridos, interpreta la ubicación MOD0, la tabla `.dynamic` (ELF64), dependencias `DT_NEEDED`, nombres de símbolos y entradas de reubicación `RELA`. Informa los tipos AArch64 `R_AARCH64_RELATIVE`, `GLOB_DAT`, `JUMP_SLOT` y `ABS64` sin modificar direcciones ni ejecutar instrucciones.
+
+Este parser es experimental y solo admite archivos locales de hasta 16 MiB con el tipo de información compatible. El formato completo de Switch incluye más casos de los que todavía contemplamos. Incluimos un **NSO ficticio de prueba** y pruebas negativas de límites para evitar que un archivo malformado se procese de manera insegura.
+
+Fuentes de los campos usados: https://switchbrew.org/wiki/MOD y https://switchbrew.org/wiki/NSO0 .
+
+**No es un port ni un emulador jugable**: la inspección de referencias no significa que podamos resolverlas, cargar sus bibliotecas o ejecutar BOTW. No contiene código, ROMs ni claves de Nintendo.

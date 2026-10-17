@@ -21,6 +21,7 @@ public final class MainActivity extends Activity {
     private static native String nativeReconstructNso(int fd);
     private static native String nativeRunSyntheticArm64();
     private static native String nativeRunLinkedArm64();
+    private static native String nativeInspectMod0(int fd);
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         ScrollView scroll = new ScrollView(this);
@@ -83,6 +84,15 @@ public final class MainActivity extends Activity {
             startActivityForResult(pick, 74);
         });
         body.addView(reconstruct);
+        Button mod0 = new Button(this);
+        mod0.setText("Inspeccionar MOD0, bibliotecas y enlaces de Switch");
+        mod0.setOnClickListener(v -> {
+            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            pick.addCategory(Intent.CATEGORY_OPENABLE);
+            pick.setType("*/*");
+            startActivityForResult(pick, 75);
+        });
+        body.addView(mod0);
         Button execute = new Button(this);
         execute.setText("Ejecutar función ARM64 ficticia (19 + 23)");
         execute.setOnClickListener(v -> {
@@ -115,15 +125,17 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if ((requestCode != REQUEST_NSO && requestCode != 74) || resultCode != RESULT_OK || data == null) return;
+        if ((requestCode != REQUEST_NSO && requestCode != 74 && requestCode != 75) || resultCode != RESULT_OK || data == null) return;
         Uri uri = data.getData();
         if (uri == null) return;
         try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(uri, "r")) {
             if (descriptor == null) throw new IllegalStateException("No fue posible abrir el archivo.");
             System.loadLibrary("botwgpu");
-            scanResult.setText(requestCode == 74
-                ? nativeReconstructNso(descriptor.getFd())
-                : nativeInspectNso(descriptor.getFd()));
+            scanResult.setText(requestCode == 75
+                ? nativeInspectMod0(descriptor.getFd())
+                : requestCode == 74
+                  ? nativeReconstructNso(descriptor.getFd())
+                  : nativeInspectNso(descriptor.getFd()));
         } catch (Exception | LinkageError error) {
             scanResult.setText("No se pudo analizar el archivo: " + error.getClass().getSimpleName());
         }
