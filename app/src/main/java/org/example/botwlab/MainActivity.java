@@ -2,6 +2,8 @@ package org.example.botwlab;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
+import android.os.ParcelFileDescriptor;
 import android.content.pm.FeatureInfo;
 import android.os.Build;
 import android.os.Bundle;
@@ -12,7 +14,10 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 public final class MainActivity extends Activity {
+    private static final int REQUEST_NSO = 73;
+    private TextView scanResult;
     private static native String nativeVulkanInfo();
+    private static native String nativeInspectNso(int fd);
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         ScrollView scroll = new ScrollView(this);
@@ -56,7 +61,34 @@ public final class MainActivity extends Activity {
         test.setText("Probar gráficos y pantalla táctil");
         test.setOnClickListener(v -> startActivity(new Intent(this, GraphicsActivity.class)));
         body.addView(test);
+        Button select = new Button(this);
+        select.setText("Analizar NSO de Switch (solo metadatos)");
+        select.setOnClickListener(v -> {
+            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            pick.addCategory(Intent.CATEGORY_OPENABLE);
+            pick.setType("*/*");
+            startActivityForResult(pick, REQUEST_NSO);
+        });
+        body.addView(select);
+        scanResult = new TextView(this);
+        scanResult.setPadding(0, 18, 0, 18);
+        scanResult.setText("Selecciona un NSO0 sin cifrar de una copia propia. No ejecuta el archivo.");
+        scanResult.setTextIsSelectable(true);
+        body.addView(scanResult);
         scroll.addView(body);
         setContentView(scroll);
+    }
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_NSO || resultCode != RESULT_OK || data == null) return;
+        Uri uri = data.getData();
+        if (uri == null) return;
+        try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(uri, "r")) {
+            if (descriptor == null) throw new IllegalStateException("No fue posible abrir el archivo.");
+            System.loadLibrary("botwgpu");
+            scanResult.setText(nativeInspectNso(descriptor.getFd()));
+        } catch (Exception | LinkageError error) {
+            scanResult.setText("No se pudo analizar el archivo: " + error.getClass().getSimpleName());
+        }
     }
 }

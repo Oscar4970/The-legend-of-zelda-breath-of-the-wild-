@@ -23,3 +23,13 @@ No incluye ROMs, claves ni archivos de Nintendo. **Este repositorio está públi
 La pantalla inicial consulta **Vulkan nativo** mediante una biblioteca C++ enlazada con libvulkan, además de la información del sistema. El escenario 3D tiene vista de pantalla completa y un selector **Carga 1× / 4× / 12× / 24×**. Cada nivel repite el dibujo de 10,608 triángulos para comparar FPS; la geometría permanece visualmente igual. La prueba no mide el rendimiento de ningún juego comercial. Evita pruebas prolongadas en el nivel máximo para no calentar innecesariamente el teléfono.
 
 Se necesita NDK y CMake para compilar. GitHub Actions instala ambos y verifica que el APK contiene `lib/arm64-v8a/libbotwgpu.so`.
+
+## v0.4: Analizador NSO0 para Switch
+
+Se agregó el botón **Analizar NSO de Switch (solo metadatos)**. Usa el selector de archivos de Android y lee únicamente la cabecera de 256 bytes del NSO mediante `pread` en el descriptor proporcionado por el sistema.
+
+Identifica la firma NSO0, nombre de secciones, tamaños, offsets, flags de compresión y hash, BSS y Module ID. Valida límites y superposición de segmentos. No intenta ejecutar ni descifrar archivos, descomprimir secciones ni verificar hashes o autenticidad.
+
+El resultado se muestra solo en la pantalla y el archivo no se sube, almacena ni modifica. Por seguridad, el analizador limita los archivos a 512 MiB. Si se elige un archivo sin descifrar, se rechazará. Los tests automáticos usan un NSO **sintético**, sin ninguna ROM.
+
+**Limitación:** este avance analiza el formato de ejecutable de Switch; no implementa los servicios del sistema, el cargador de memoria, NVN/Vulkan ni el motor BOTW. No es un port jugable.
