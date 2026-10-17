@@ -71,6 +71,16 @@ jobs:
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/vulkan_offscreen_test.cpp -o /tmp/vulkan_offscreen_test
           /tmp/vulkan_offscreen_test
+      - name: Compile GLSL shaders to Vulkan 1.3 SPIR-V and validate them
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq glslang-tools spirv-tools
+          python3 scripts/generate_triangle_spirv.py
+          test -s app/src/main/cpp/generated_triangle_spirv.h
+      - name: Verify foreground and background GPU readback expectations
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/vulkan_triangle_test.cpp -o /tmp/vulkan_triangle_test
+          /tmp/vulkan_triangle_test
       - name: Compile test app (NOT Zelda)
         run: gradle --no-daemon :app:assembleDebug --stacktrace
       - name: Check APK
@@ -87,7 +97,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: BOTW-Android-Vulkan-Readback-v016-NOT-GAME
+          name: BOTW-Android-SPIRV-Triangle-v017-NOT-GAME
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

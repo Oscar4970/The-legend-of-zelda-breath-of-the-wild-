@@ -20,6 +20,7 @@ public final class MainActivity extends Activity {
     private static native String nativeVulkanInfo();
     private static native String nativeVulkanRuntimeProbe();
     private static native String nativeOffscreenGpuCheck();
+    private static native String nativeTriangleGpuCheck();
     private static native String nativeInspectNso(int fd);
     private static native String nativeReconstructNso(int fd);
     private static native String nativeRunSyntheticArm64();
@@ -121,6 +122,27 @@ public final class MainActivity extends Activity {
             }, "VulkanGpuReadback").start();
         });
         body.addView(gpuDraw);
+        Button triangle = new Button(this);
+        triangle.setText("Probar TRIANGULO REAL con shaders SPIR-V y Vulkan");
+        triangle.setOnClickListener(v -> {
+            triangle.setEnabled(false);
+            scanResult.setText("Dibujando triangulo de 64x64 con GPU Vulkan...");
+            new Thread(() -> {
+                String report;
+                try {
+                    System.loadLibrary("botwgpu");
+                    report=nativeTriangleGpuCheck();
+                } catch (Throwable ex) {
+                    report="No fue posible iniciar el test SPIR-V: "+ex.getClass().getSimpleName();
+                }
+                final String message=report;
+                runOnUiThread(() -> {
+                    scanResult.setText(message);
+                    triangle.setEnabled(true);
+                });
+            }, "VulkanSpirvTriangle").start();
+        });
+        body.addView(triangle);
         Button select = new Button(this);
         select.setText("Analizar NSO de Switch (solo metadatos)");
         select.setOnClickListener(v -> {
