@@ -26,6 +26,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Validate privately supplied ROM container intake (synthetic fixtures only)
+        run: python3 -m unittest discover -s tests -p rom_container_inspector_test.py -v
       - name: Run NSO metadata validation (host, synthetic test fixtures)
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/nso_format_test.cpp -o /tmp/nso_format_test

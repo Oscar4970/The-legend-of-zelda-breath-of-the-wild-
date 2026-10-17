@@ -13,3 +13,18 @@ recomp_aot/_build_upstream/
 recomp_aot/_build_fixture/
 app/src/main/cpp/aot_generated/
 app/src/main/assets/THIRD_PARTY_NOTICES.txt
+
+# Never publish Nintendo game containers, keys, firmware or extracted content
+*.nsp
+*.xci
+*.nsz
+*.xcz
+*.nca
+*.nro
+*.tik
+*.keys
+prod.keys
+title.keys
+private/
+roms/
+rom_reports/

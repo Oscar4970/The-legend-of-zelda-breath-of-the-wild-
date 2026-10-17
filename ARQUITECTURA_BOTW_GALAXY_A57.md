@@ -70,3 +70,8 @@ No aumentar porcentajes o describir un APK como port jugable por completar prueb
 - https://github.com/GreenNaugahyde/ZeldaWWHDRecompAndroid
 - https://github.com/zeldaret/botw
 - https://github.com/vaduur/LibertyRecompAndroid
+
+
+## Cambio en la entrada: ROM como origen local (2026-10-17)
+
+El usuario eligió trabajar con un contenedor propio en formato NSP o XCI. Se implementó `scripts/inspeccionar_rom_switch.py` (metadatos PFS0/HEAD; sin descifrado, ejecución ni extracción). El archivo no se publica en GitHub. **Esta entrada solo estará disponible cuando el usuario consiga una copia de procedencia legítima.** La arquitectura de recompilación Switch y los bloqueos de Horizon/NVN permanecen sin cambio.

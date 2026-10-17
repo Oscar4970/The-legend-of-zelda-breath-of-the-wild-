@@ -156,3 +156,21 @@ La app incluye los avisos de licencia y autoría de SwitchGamesRecomp. Los archi
 ## Decisión principal para Galaxy A57 (17 de octubre de 2026)
 
 **Ruta elegida: recompilación estática de la edición Switch (AArch64 → C++ → ARM64 Android) con Horizon HLE y NVN→Vulkan.** La muestra v0.18 devolvió 42 en el teléfono; no ejecuta Zelda. No seguiremos creando demos gráficas aisladas como sustituto de progresar el runtime. El siguiente objetivo es un homebrew real recompilado con llamadas al sistema. Detalles, alternativas Wii U, límites de 8 GB RAM y objetivos de estabilidad en [ARQUITECTURA_BOTW_GALAXY_A57.md](ARQUITECTURA_BOTW_GALAXY_A57.md).
+
+## ROM como entrada del port (NSP/XCI, no necesita cartucho en el laboratorio)
+
+**Estado:** el usuario prefiere un archivo de imagen Switch como entrada para el proyecto, en lugar de extraer el cartucho durante esta fase. Todavía **no ha proporcionado ningún archivo** y no hay acceso a los recursos de BOTW. Un archivo NSP/XCI por sí solo **no permite** al APK v0.18 ejecutar el juego. El contenido comercial debe obtenerse de una copia legítima del usuario.
+
+Se añadió `scripts/inspeccionar_rom_switch.py`, un inspector **solo de cabeceras/índice de contenedor**: confirma firmas PFS0 de NSP y HEAD de XCI, lista nombres y tamaños de entradas NSP, comprueba límites y **no descifra ni extrae NCAs, no ejecuta archivos, no procesa claves ni sube el contenido**. Se valida con datos sintéticos mediante `tests/rom_container_inspector_test.py` en GitHub Actions.
+
+Ejecutar **en la PC del usuario**, usando Python 3:
+```powershell
+py scripts/inspeccionar_rom_switch.py "D:\Juegos\mi_copia_legitima.nsp"
+```
+O para guardar el informe sin datos del juego:
+```powershell
+py scripts/inspeccionar_rom_switch.py "D:\Juegos\mi_copia_legitima.nsp" --json "D:\Juegos\informe_rom.json"
+```
+Si el archivo es XCI también sirve, pero de momento el inspector solo confirma su cabecera. Una identificación positiva de PFS0/HEAD **no confirma que sea BOTW ni determina versión, región o integridad**. Los NCA internos pueden estar cifrados; obtener el ejecutable para recompilar exige una extracción/descifrado legítimo y privado con herramientas compatibles. **Nunca introducir datos de copia comercial al CI público**. Mantener los archivos originales y claves en la PC personal, no compartirlos en GitHub.
+
+Siguiente paso cuando exista el archivo: identificar formato, versión e inventario de ExeFS/RomFS a partir de una extracción local autorizada; después preflight de los NSO `main`, `sdk` y dependencias, y solo entonces investigación del arranque mediante el runtime nativo. La herramienta agregada es preparación de entrada, **no un launcher universal ni un port de BOTW**.
