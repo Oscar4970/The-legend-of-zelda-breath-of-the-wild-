@@ -276,6 +276,14 @@ std::string run(){
     const auto center=(offscreen::kHeight/2*offscreen::kWidth+offscreen::kWidth/2)*4;
     std::array<int,4> rgba{data[center],data[center+1],data[center+2],data[center+3]};
     vkUnmapMemory(r.device,r.bufferMemory);
+    const auto depthAvailable=[&](VkFormat depthFmt){
+        VkFormatProperties dp{};
+        vkGetPhysicalDeviceFormatProperties(gpu,depthFmt,&dp);
+        return (dp.optimalTilingFeatures&VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)!=0;
+    };
+    const bool depth32S8=depthAvailable(VK_FORMAT_D32_SFLOAT_S8_UINT);
+    const bool depth32=depthAvailable(VK_FORMAT_D32_SFLOAT);
+    const bool depth16=depthAvailable(VK_FORMAT_D16_UNORM);
     vkDestroyImageView(r.device,view,nullptr);
     std::ostringstream report;
     report<<"PRUEBA GPU REAL: dynamicRendering + lectura\n"
@@ -283,6 +291,9 @@ std::string run(){
           <<"Imagen Vulkan: 16x16 R8G8B8A8_UNORM\n"
           <<"Color esperado RGBA: 64, 128, 191, 255 (tolerancia 2)\n"
           <<"Color GPU centro: "<<rgba[0]<<", "<<rgba[1]<<", "<<rgba[2]<<", "<<rgba[3]<<"\n"
+          <<"D32/S8 disponible: "<<(depth32S8?"si":"no")<<"\n"
+          <<"D32 disponible: "<<(depth32?"si":"no")<<"\n"
+          <<"D16 disponible: "<<(depth16?"si":"no")<<"\n"
           <<"Enviar y sincronizar GPU: CORRECTO\n"
           <<offscreen::outcome(correct)
           <<"\n\nPrueba real de borrado/color y lectura con Vulkan 1.3. "

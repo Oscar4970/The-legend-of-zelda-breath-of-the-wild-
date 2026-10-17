@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(botwgpu LANGUAGES CXX)
-add_library(botwgpu SHARED gpu_info.cpp nso_inspector.cpp nso_memory_jni.cpp synthetic_exec.cpp linked_exec.cpp mod0_jni.cpp nro_inspector_jni.cpp relr_simulator_jni.cpp nro_runtime_audit_jni.cpp vulkan_runtime_probe.cpp)
+add_library(botwgpu SHARED gpu_info.cpp nso_inspector.cpp nso_memory_jni.cpp synthetic_exec.cpp linked_exec.cpp mod0_jni.cpp nro_inspector_jni.cpp relr_simulator_jni.cpp nro_runtime_audit_jni.cpp vulkan_runtime_probe.cpp vulkan_offscreen_test.cpp)
 target_compile_features(botwgpu PRIVATE cxx_std_17)
 target_link_libraries(botwgpu vulkan)

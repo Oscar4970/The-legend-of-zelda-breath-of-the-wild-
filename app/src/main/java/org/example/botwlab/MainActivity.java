@@ -19,6 +19,7 @@ public final class MainActivity extends Activity {
     private TextView scanResult;
     private static native String nativeVulkanInfo();
     private static native String nativeVulkanRuntimeProbe();
+    private static native String nativeOffscreenGpuCheck();
     private static native String nativeInspectNso(int fd);
     private static native String nativeReconstructNso(int fd);
     private static native String nativeRunSyntheticArm64();
@@ -98,6 +99,28 @@ public final class MainActivity extends Activity {
             }
         });
         body.addView(gpuProbe);
+        Button gpuDraw = new Button(this);
+        gpuDraw.setText("Probar GPU Vulkan real: dibujar color y verificar píxeles");
+        gpuDraw.setOnClickListener(v -> {
+            gpuDraw.setEnabled(false);
+            scanResult.setText("Probando dibujo Vulkan 16x16 en GPU... (sin ROM ni shaders)");
+            new Thread(() -> {
+                String result;
+                try {
+                    System.loadLibrary("botwgpu");
+                    result = nativeOffscreenGpuCheck();
+                } catch (Throwable error) {
+                    result = "Error al iniciar el test gráfico: " +
+                        error.getClass().getSimpleName();
+                }
+                final String resultText = result;
+                runOnUiThread(() -> {
+                    scanResult.setText(resultText);
+                    gpuDraw.setEnabled(true);
+                });
+            }, "VulkanGpuReadback").start();
+        });
+        body.addView(gpuDraw);
         Button select = new Button(this);
         select.setText("Analizar NSO de Switch (solo metadatos)");
         select.setOnClickListener(v -> {

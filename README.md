@@ -126,3 +126,10 @@ El botón **«Diagnosticar compatibilidad gráfica Vulkan para Switch»** consul
 Los criterios de esta prueba se basan en el código de `runtime/src/nvn/nvn_vk.cpp` y el documento `docs/WONDER-ANDROID-OPTIONS.md` del proyecto MIT [SuperMarioWonderRecomp](https://github.com/BelmanteGu/SuperMarioWonderRecomp). Las funciones opcionales pueden contar con rutas de compatibilidad; no son siempre bloqueos. **Pasar la prueba no asegura rendimiento ni ejecución de Super Mario Wonder o Zelda**: faltan el código recompilado, los servicios Horizon, NVN, los shaders Maxwell→SPIR-V y los archivos legítimos de cada juego. El código de estos proyectos no se ha integrado aún.
 
 Ver [AUDITORIA_WONDER_A_BOTW.md](AUDITORIA_WONDER_A_BOTW.md) para decisiones arquitectónicas, dependencias y criterios de éxito.
+
+
+## v0.16 — Prueba de renderizado Vulkan real y lectura de píxeles
+
+Tras la prueba v0.15 en el Samsung SM-A576B (Xclipse 550, Vulkan 1.4.304), agregamos **«Probar GPU Vulkan real: dibujar color y verificar píxeles»**. En lugar de limitarse a leer características declaradas, crea temporalmente una imagen Vulkan RGBA8 de **16 × 16**, utiliza `vkCmdBeginRendering` con `LOAD_OP_CLEAR` para generar color (0.25, 0.5, 0.75, 1), copia los píxeles a un búfer de lectura, espera la finalización y verifica el color **RGBA = (64, 128, 191, 255)** con tolerancia de dos niveles por canal. Libera los recursos gráficos tras la prueba; no modifica configuraciones ni crea archivos permanentes. También consulta si existen alternativas D32/S8, D32 y D16 a la ausencia de D24/S8 vista en el Galaxy. Se ejecuta en un hilo de la aplicación.
+
+**Limitaciones estrictas:** la prueba de GPU tiene que confirmarse en el Samsung; compilar el APK no significa que los comandos Vulkan funcionen allí. No crea una pipeline de shaders, no dibuja triángulos, no prueba NVN ni contenido original de Breath of the Wild. El código no incluye datos ni código propietario. Un problema con el driver debe tratarse como hallazgo de compatibilidad y no como fallo de Zelda.
