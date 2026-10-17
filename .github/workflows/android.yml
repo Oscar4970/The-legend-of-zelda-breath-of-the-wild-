@@ -46,6 +46,10 @@ jobs:
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/mod0_inspector_test.cpp -o /tmp/mod0_inspector_test
           /tmp/mod0_inspector_test
+      - name: Test read-only NRO0 homebrew file format and ASET resources
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/nro_inspector_test.cpp -o /tmp/nro_inspector_test
+          /tmp/nro_inspector_test
       - name: Compile test app (NOT Zelda)
         run: gradle --no-daemon :app:assembleDebug --stacktrace
       - name: Check APK
@@ -62,7 +66,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: BOTW-Android-MOD0-Inspector-v09-NOT-GAME
+          name: BOTW-Android-NRO-Inspector-v010-NOT-GAME
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

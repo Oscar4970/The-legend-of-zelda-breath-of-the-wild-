@@ -70,3 +70,12 @@ Este parser es experimental y solo admite archivos locales de hasta 16 MiB con e
 Fuentes de los campos usados: https://switchbrew.org/wiki/MOD y https://switchbrew.org/wiki/NSO0 .
 
 **No es un port ni un emulador jugable**: la inspección de referencias no significa que podamos resolverlas, cargar sus bibliotecas o ejecutar BOTW. No contiene código, ROMs ni claves de Nintendo.
+
+
+## v0.10 — Soporte de homebrew Nintendo Switch (.nro)
+
+La mayoría de las demostraciones homebrew se distribuyen como archivos `.nro`, mientras que nuestros análisis anteriores usaban `.nso`. Se agregó el botón **Inspeccionar homebrew NRO de Switch (solo lectura)**, que permite examinar la cabecera `NRO0`, las tres secciones, BSS y el identificador de módulo. Si hay recursos opcionales `ASET`, reporta el tamaño de icono, NACP y RomFS. Si el archivo contiene `MOD0`, utiliza el analizador existente para inventariar dependencias y reubicaciones sin ejecutarlas.
+
+**Límites:** archivos locales de máximo 16 MiB, solo NRO convencional sin compresión moderna. MOD0 puede no estar presente o no ser procesable, sin que eso signifique que el NRO es inválido. No autentica archivos, ni ejecuta el código ni utiliza claves de Nintendo. Esta versión sigue siendo una herramienta de compatibilidad experimental, no un port de BOTW.
+
+Documentación: https://switchbrew.org/wiki/NRO0 .
