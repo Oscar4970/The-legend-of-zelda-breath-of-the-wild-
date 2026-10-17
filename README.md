@@ -43,3 +43,12 @@ El nuevo botón **Reconstruir imagen NSO** lee archivos locales NSO0 de hasta **
 ## v0.6 — Integridad de secciones NSO0
 
 Cuando una cabecera NSO0 marca una sección con hash obligatorio, el laboratorio calcula SHA-256 sobre la sección **ya descomprimida** y rechaza el archivo si el resultado no coincide con el hash de la cabecera. Para mantener el alcance explícito, se rechaza la nueva compresión ZBIC, que no implementamos. Esto **no verifica firmas digitales ni autenticidad del juego**. Incluye pruebas SHA-256 con vectores conocidos, pruebas de corrupción y descompresión previas. Se ajustó la pantalla inicial para respetar los márgenes del sistema en versiones recientes de Android.
+
+
+## v0.7 — Primera prueba de ejecución de instrucciones ARM64
+
+El botón **Ejecutar función ARM64 ficticia (19 + 23)** genera un **NSO0 sintético integrado en el APK**, con secciones de datos, LZ4 y tres hashes SHA-256. Después de comprobarlos, el programa solo permite ejecutar una **única secuencia de dos instrucciones AArch64 permitida expresamente**: `add w0,w0,w1` y `ret`. El código se copia a una página sin permiso de ejecución, se sincroniza la caché de instrucciones, y se cambia mediante `mprotect` a **lectura + ejecución** (nunca escritura + ejecución simultánea). Se llama con argumentos 19 y 23 y se espera 42. La página se libera después.
+
+**Seguridad:** la función no lee ejecutables proporcionados por usuarios, no ejecuta código arbitrario, no permite instrucciones de ROM, no desactiva controles de Android y no necesita permisos del sistema. Si Android impide `mprotect`, muestra el error. Cualquier fallo o resultado inesperado debe notificarse con una captura, sin seguir insistiendo.
+
+**Alcance:** esta es únicamente una prueba AArch64/ABI con bytes totalmente sintéticos. No es un cargador de BOTW, no implementa bibliotecas de Switch, reubicación dinámica, ASLR del juego, símbolos, NVN ni servicios de Nintendo. Superar la prueba no garantiza ni estima cuánto falta para un port jugable.

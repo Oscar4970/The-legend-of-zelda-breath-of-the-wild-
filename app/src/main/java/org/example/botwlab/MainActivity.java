@@ -19,6 +19,7 @@ public final class MainActivity extends Activity {
     private static native String nativeVulkanInfo();
     private static native String nativeInspectNso(int fd);
     private static native String nativeReconstructNso(int fd);
+    private static native String nativeRunSyntheticArm64();
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         ScrollView scroll = new ScrollView(this);
@@ -81,6 +82,17 @@ public final class MainActivity extends Activity {
             startActivityForResult(pick, 74);
         });
         body.addView(reconstruct);
+        Button execute = new Button(this);
+        execute.setText("Ejecutar función ARM64 ficticia (19 + 23)");
+        execute.setOnClickListener(v -> {
+            try {
+                System.loadLibrary("botwgpu");
+                scanResult.setText(nativeRunSyntheticArm64());
+            } catch (Throwable error) {
+                scanResult.setText("La prueba ARM64 no se pudo iniciar: " + error.getClass().getSimpleName());
+            }
+        });
+        body.addView(execute);
         scanResult = new TextView(this);
         scanResult.setPadding(0, 18, 0, 18);
         scanResult.setText("Selecciona un NSO0 sin cifrar de una copia propia. No ejecuta el archivo.");
