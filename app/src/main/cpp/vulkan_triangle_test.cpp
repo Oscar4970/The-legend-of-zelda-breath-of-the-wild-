@@ -219,8 +219,8 @@ std::string run(){
     VkPipelineColorBlendAttachmentState blend{};
     blend.colorWriteMask=VK_COLOR_COMPONENT_R_BIT|VK_COLOR_COMPONENT_G_BIT|
                          VK_COLOR_COMPONENT_B_BIT|VK_COLOR_COMPONENT_A_BIT;
-    VkPipelineColorBlendStateCreateInfo cb{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
-    cb.attachmentCount=1;cb.pAttachments=&blend;
+    VkPipelineColorBlendStateCreateInfo blendState{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+    blendState.attachmentCount=1;blendState.pAttachments=&blend;
     VkPipelineRenderingCreateInfo renderPipeline{VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO};
     renderPipeline.colorAttachmentCount=1;renderPipeline.pColorAttachmentFormats=&format;
     VkGraphicsPipelineCreateInfo gp{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
@@ -228,7 +228,7 @@ std::string run(){
     gp.stageCount=2;gp.pStages=stages;
     gp.pVertexInputState=&vi;gp.pInputAssemblyState=&ia;
     gp.pViewportState=&vp;gp.pRasterizationState=&raster;
-    gp.pMultisampleState=&ms;gp.pColorBlendState=&cb;
+    gp.pMultisampleState=&ms;gp.pColorBlendState=&blendState;
     gp.layout=r.pipelineLayout;
     gp.renderPass=VK_NULL_HANDLE;
     status=vkCreateGraphicsPipelines(r.device,VK_NULL_HANDLE,1,&gp,nullptr,&r.pipeline);
