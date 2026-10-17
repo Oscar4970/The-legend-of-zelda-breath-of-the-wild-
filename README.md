@@ -89,3 +89,8 @@ El trabajo automático de GitHub también descarga **`ftpd-classic.nro`**, versi
 ### Interpretación de BSS en homebrew real
 
 Una prueba de solo lectura con el NRO abierto `ftpd-classic.nro` detectó que algunas cabeceras MOD0 delimitan BSS dentro del tramo total de datos inicializados + BSS, sin coincidir exactamente con los límites indicados por el encabezado NRO. El analizador acepta esa distribución solo si el intervalo está dentro de la imagen reconstruida; no cambia permisos de memoria ni ejecuta el archivo. Se incluyó una prueba de regresión para este caso.
+
+
+## v0.11 — Inventario REL y etiquetas ELF64
+
+La vista MOD0 ahora también inspecciona las relocaciones `DT_REL` además de `DT_RELA`, mostrando los tipos y valores de todas las etiquetas `.dynamic` encontradas. Esto ayuda a evitar conclusiones incorrectas cuando un módulo no contiene relocaciones RELA. Las nuevas pruebas comprueban una entrada REL válida y un tamaño de entrada inválido. **Es un lector estático: no enlaza ni ejecuta programas.**

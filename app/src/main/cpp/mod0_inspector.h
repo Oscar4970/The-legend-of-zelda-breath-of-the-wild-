@@ -15,7 +15,8 @@ struct Result {
     bool ok=false;
     std::string error;
     std::uint32_t modVa=0, dynamicVa=0;
-    std::uint32_t dynamicEntries=0, relaEntries=0, importsFound=0;
+    std::uint32_t dynamicEntries=0, relaEntries=0, relEntries=0, importsFound=0;
+    std::vector<std::pair<std::int64_t,std::uint64_t>> dynamicTags;
     std::uint32_t relative=0, globDat=0, jumpSlot=0, abs64=0, other=0;
     std::vector<std::string> needed;
     std::vector<std::string> importNames;
@@ -70,9 +71,11 @@ inline bool textString(const nsomemory::Image& img,std::uint64_t table,
 struct Dynamic {
     std::uint64_t strtab=0,strsz=0,symtab=0,syment=0;
     std::uint64_t rela=0,relasz=0,relaent=0;
+    std::uint64_t rel=0,relsz=0,relent=0;
     std::uint64_t jmprel=0,pltrelsz=0,pltrel=0;
     bool seenStrtab=false,seenStrsz=false,seenSymtab=false,seenSyment=false;
     bool seenRela=false,seenRelasz=false,seenRelaent=false;
+    bool seenRel=false,seenRelsz=false,seenRelent=false;
     bool seenJmprel=false,seenPltrelsz=false,seenPltrel=false;
     std::vector<std::uint64_t> neededOffsets;
 };
@@ -122,6 +125,7 @@ inline Result parse(const nsomemory::Image& image) {
         const std::uint64_t value=u64(entry+8);
         ++result.dynamicEntries;
         if(tag==0){terminated=true;break;}
+        result.dynamicTags.emplace_back(tag,value);
         switch(tag) {
             case 1:
                 if(d.neededOffsets.size()>=64){result.error="Demasiadas dependencias DT_NEEDED.";return result;}
@@ -140,6 +144,12 @@ inline Result parse(const nsomemory::Image& image) {
                 d.seenRelasz=true;d.relasz=value;break;
             case 9: if(d.seenRelaent){result.error="DT_RELAENT duplicado.";return result;}
                 d.seenRelaent=true;d.relaent=value;break;
+            case 17: if(d.seenRel){result.error="DT_REL duplicado.";return result;}
+                d.seenRel=true;d.rel=value;break;
+            case 18: if(d.seenRelsz){result.error="DT_RELSZ duplicado.";return result;}
+                d.seenRelsz=true;d.relsz=value;break;
+            case 19: if(d.seenRelent){result.error="DT_RELENT duplicado.";return result;}
+                d.seenRelent=true;d.relent=value;break;
             case 23: if(d.seenJmprel){result.error="DT_JMPREL duplicado.";return result;}
                 d.seenJmprel=true;d.jmprel=value;break;
             case 2: if(d.seenPltrelsz){result.error="DT_PLTRELSZ duplicado.";return result;}
@@ -166,15 +176,16 @@ inline Result parse(const nsomemory::Image& image) {
         result.needed.push_back(std::move(value));
     }
     auto relocations=[&](std::uint64_t va,std::uint64_t bytes,
-                         bool required)->bool {
+                         bool required,std::uint64_t stride)->bool {
         if(!required)return true;
         if(bytes==0)return true;
-        if(bytes>8192*24ULL || bytes%24 || !at(image,va,bytes)) {
-            result.error="Tabla ELF64 RELA fuera de limites o mal alineada.";return false;
+        if((stride!=16 && stride!=24) || bytes>8192*stride ||
+           bytes%stride || !at(image,va,bytes)) {
+            result.error="Tabla ELF64 REL/RELA fuera de limites o mal alineada.";return false;
         }
-        for(std::uint64_t i=0;i<bytes;i+=24) {
-            const auto* p=at(image,va+i,24);
-            if(!p){result.error="RELA truncada.";return false;}
+        for(std::uint64_t i=0;i<bytes;i+=stride) {
+            const auto* p=at(image,va+i,stride);
+            if(!p){result.error="REL/RELA truncada.";return false;}
             const std::uint64_t target=u64(p);
             const std::uint64_t info=u64(p+8);
             const std::uint32_t type=static_cast<std::uint32_t>(info);
@@ -183,7 +194,8 @@ inline Result parse(const nsomemory::Image& image) {
             if(!at(image,target,8,true)) {
                 result.error="Destino de reubicacion fuera de memoria.";return false;
             }
-            ++result.relaEntries;
+            if(stride==16)++result.relEntries;
+            else ++result.relaEntries;
             switch(type){
                 case 1027: ++result.relative;break; // R_AARCH64_RELATIVE
                 case 1025: ++result.globDat;break;  // R_AARCH64_GLOB_DAT
@@ -212,12 +224,16 @@ inline Result parse(const nsomemory::Image& image) {
     if(d.seenRela!=d.seenRelasz || (d.seenRela && (!d.seenRelaent || d.relaent!=24))){
         result.error="Tags DT_RELA incompletos.";return result;
     }
-    if(!relocations(d.rela,d.relasz,d.seenRela))return result;
+    if(!relocations(d.rela,d.relasz,d.seenRela,24))return result;
+    if(d.seenRel!=d.seenRelsz || (d.seenRel && (!d.seenRelent || d.relent!=16))){
+        result.error="Tags DT_REL incompletos.";return result;
+    }
+    if(!relocations(d.rel,d.relsz,d.seenRel,16))return result;
     if(d.seenJmprel!=d.seenPltrelsz ||
-        (d.seenJmprel && (!d.seenPltrel || d.pltrel!=7))){
+        (d.seenJmprel && (!d.seenPltrel || (d.pltrel!=7 && d.pltrel!=17)))){
         result.error="DT_JMPREL requiere DT_PLTREL=RELA.";return result;
     }
-    if(!relocations(d.jmprel,d.pltrelsz,d.seenJmprel))return result;
+    if(!relocations(d.jmprel,d.pltrelsz,d.seenJmprel,d.pltrel==17?16:24))return result;
     result.ok=true;
     return result;
 }
@@ -227,13 +243,18 @@ inline std::string report(const Result& r) {
     s+="MOD0 virtual: "+std::to_string(r.modVa)+
        "\n.dynamic virtual: "+std::to_string(r.dynamicVa)+
        "\nEntradas dinamicas: "+std::to_string(r.dynamicEntries)+
-       "\nRelocaciones RELA: "+std::to_string(r.relaEntries);
+       "\nRelocaciones RELA: "+std::to_string(r.relaEntries)+
+       "\nRelocaciones REL: "+std::to_string(r.relEntries);
     s+="\nRELATIVE: "+std::to_string(r.relative)+
        " | GLOB_DAT: "+std::to_string(r.globDat)+
        "\nJUMP_SLOT: "+std::to_string(r.jumpSlot)+
        " | ABS64: "+std::to_string(r.abs64)+
        " | Otros: "+std::to_string(r.other);
     s+="\nSimbolos externos encontrados: "+std::to_string(r.importsFound);
+    s+="\nTags ELF64 presentes (tipo=valor):";
+    for(const auto& tag:r.dynamicTags){
+        s+="\n  "+std::to_string(tag.first)+"="+std::to_string(tag.second);
+    }
     for(const auto& library:r.needed)s+="\nNecesita: "+library;
     for(const auto& name:r.importNames)s+="\nImportacion: "+name;
     s+="\n\nNO se aplican relocaciones, no se ejecuta codigo ni se cargan ROMs.";

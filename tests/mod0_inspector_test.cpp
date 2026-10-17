@@ -104,6 +104,23 @@ int main(){
     hashes(aligned);
     assert(read(aligned).ok);
     pass("MOD0 BSS interval within data+BSS mapping accepted");
+    auto withRel=fixture();
+    dyn(withRel,8,17,0x1340);
+    dyn(withRel,9,18,16);
+    dyn(withRel,10,19,16);
+    dyn(withRel,11,0,0);
+    put64(withRel,kRo+0x340,0x2000);
+    put64(withRel,kRo+0x348,1027);
+    hashes(withRel);
+    auto inventory=read(withRel);
+    assert(inventory.ok && inventory.relEntries==1 && inventory.relaEntries==2
+           && inventory.relative==2);
+    pass("ELF64 REL relocation read alongside RELA (no writes)");
+    auto malformedRel=withRel;
+    dyn(malformedRel,10,19,8);
+    hashes(malformedRel);
+    assert(!read(malformedRel).ok);
+    pass("invalid DT_RELENT rejected");
     auto bad=fixture();
     bad[kText+0x20]='N';hashes(bad);
     assert(!read(bad).ok);pass("invalid MOD0 signature rejected");
@@ -139,5 +156,5 @@ int main(){
     bad[kRo+0x200]='X'; // don't update SHA, must fail at NSO reconstruction.
     auto memory=nsomemory::reconstruct(bad.data(),bad.size());
     assert(!memory.ok);pass("corrupted NSO input blocked by SHA-256 before MOD0");
-    std::cout<<"All 13 MOD0 parser tests passed.\n";
+    std::cout<<"All 15 MOD0 parser tests passed.\n";
 }
