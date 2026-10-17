@@ -90,7 +90,7 @@ def build(elf):
     image[strtab:strtab+len(strings)]=strings
     for i,(tag,val) in enumerate(((5,strtab),(6,symtab),(11,24),(10,len(strings)),(0,0))):
         struct.pack_into('<qQ',image,0x1100+i*16,tag,val)
-    txt,ro,dat=bytes(image[:0x400]),bytes(image[0x1000:0x1600]),bytes(image[0x2000:0x2100])
+    txt,ro,dat=bytes(image[:code['addr']+code['size']]),bytes(image[0x1000:0x1600]),bytes(image[0x2000:0x2100])
     payloads=(txt,ro,dat);header=bytearray(0x100);header[:4]=b'NSO0'
     cursor=0x100
     for i,(addr,payload) in enumerate(zip((0,0x1000,0x2000),payloads)):
