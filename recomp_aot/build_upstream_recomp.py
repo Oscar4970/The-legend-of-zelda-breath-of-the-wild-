@@ -73,7 +73,7 @@ def main():
     report=(homebrew_out/"report.txt").read_text(encoding="utf-8")
     if "void homebrew_00000040(" not in generated or generated.count("void homebrew_")<2:
         raise RuntimeError("Upstream recompiler missed C-compiled entry/callee")
-    if "nx::unimpl(" in generated or not re.search(r"unhandled 0\\b",report):
+    if "nx::unimpl(" in generated or not re.search(r"unhandled 0\b",report):
         raise RuntimeError("Unsupported AArch64 instructions in C-compiled test; see report")
     if "nx::svc(" not in generated:
         raise RuntimeError("Synthetic service instruction was not recompiled")
