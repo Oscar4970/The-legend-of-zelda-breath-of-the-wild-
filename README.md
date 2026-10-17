@@ -108,3 +108,12 @@ Los números de esas etiquetas se contrastaron con Android Bionic y el algoritmo
 La nueva función **Simular RELR en copia de NRO (NO ejecuta)** analiza un archivo NRO abierto, comprueba su MOD0 y expande su tabla compacta RELR en una **imagen de memoria separada y no ejecutable**. Solo en esa copia suma un desplazamiento de carga simulado `0x100000000` a los punteros indicados; informa el número de punteros modificados y un ejemplo antes/después. El archivo original no se modifica, el módulo no se ejecuta y nunca se crean páginas de memoria ejecutables. Antes de modificar la copia, valida todos los destinos, los rangos y posibles desbordamientos.
 
 GitHub Actions ejecuta **11 pruebas unitarias nuevas** con datos ficticios, incluidas entradas dañadas, y exige que la misma simulación funcione con `ftpd-classic.nro` de código abierto. Esto comprueba el procesamiento de tablas RELR en una copia, **no significa que exista un cargador funcional para Switch o Zelda**. Las importaciones, los servicios Horizon y el motor NVN/Vulkan permanecen pendientes.
+
+
+## v0.14 — Prefiltro del entorno de ejecución NRO real
+
+Se añadió **«Analizar requisitos para ejecutar NRO real (no ejecuta)»**. Examina la instrucción inicial de salto AArch64 de un NRO real, confirma que el salto apunte al código dentro de `.text`, e inventaría patrones `SVC` (llamadas al kernel Horizon) y `BRK`. Identifica dependencias pendientes, entre ellas el **Homebrew ABI** (X0: puntero LoaderConfig, X1: `-1`), los identificadores de la configuración de lanzamiento, TLS y el mecanismo de salida del programa. El recuento de `SVC` es **heurístico**: algunos bytes podrían pertenecer a datos y no se garantiza que las instrucciones sean alcanzables.
+
+Se añadió una estructura C++ de `LoaderConfigEntry` (24 bytes) y validación sintética de las entradas obligatorias MainThreadHandle, AppletType y EndOfList. Eso verifica la **estructura del protocolo, no implementa todavía los servicios ni fabrica handles Horizon**. Este prefiltro nunca ejecuta un NRO externo. GitHub Actions comprueba el salto inicial y su ubicación en un homebrew publicado de manera independiente.
+
+Fuentes: https://switchbrew.org/wiki/Homebrew_ABI y https://switchbrew.org/wiki/SVC y https://github.com/switchbrew/nx-hbloader .

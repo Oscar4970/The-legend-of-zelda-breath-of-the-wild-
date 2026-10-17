@@ -54,6 +54,10 @@ jobs:
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/relr_simulator_test.cpp -o /tmp/relr_simulator_test
           /tmp/relr_simulator_test
+      - name: Check Homebrew ABI and static Horizon SVC patterns
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/nro_runtime_audit_test.cpp -o /tmp/nro_runtime_audit_test
+          /tmp/nro_runtime_audit_test
       - name: Download and inspect real open-source NRO (ftpd classic, no execution)
         run: |
           curl --fail --location --silent --show-error --retry 2 --max-time 90             --output /tmp/ftpd-classic.nro             https://github.com/mtheall/ftpd/releases/download/v3.2.1/ftpd-classic.nro
@@ -75,7 +79,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: BOTW-Android-RELR-Sandbox-v013-NOT-GAME
+          name: BOTW-Android-NRO-Runtime-Audit-v014-NOT-GAME
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

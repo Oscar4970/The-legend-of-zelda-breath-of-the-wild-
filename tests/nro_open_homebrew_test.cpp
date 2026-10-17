@@ -1,6 +1,7 @@
 // Integration check against an independently published open-source Switch NRO.
 // This program only reads and prints metadata; it NEVER executes NRO instructions.
 #include "../app/src/main/cpp/relr_sandbox.h"
+#include "../app/src/main/cpp/nro_runtime_audit.h"
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -34,6 +35,16 @@ int main(int argc,char** argv) {
                  <<" dataEnd="<<(result.offsets[2]+result.lengths[2])
                  <<" bssLength="<<result.bssSize<<"\n";
     }
+    const auto audit=runtimeaudit::examine(data.data(),data.size());
+    if(!audit.nroValid || !audit.modParsed || !audit.entryTargetInsideText) {
+        std::cerr<<"Unexpected homebrew ABI preflight result: "
+                 <<runtimeaudit::display(audit)<<"\n";
+        return 1;
+    }
+    std::cout<<"PASS: public NRO0 startup branch targets real AArch64 code\n";
+    std::cout<<"Homebrew SVC instruction patterns: "<<audit.svcSites
+             <<" (static heuristic, not necessarily reachable)\n";
+    std::cout<<"Homebrew runtime missing capabilities: "<<audit.missing.size()<<"\n";
     std::cout<<"PASS: public independent open-source NRO0, "
              <<data.size()<<" source bytes\n"
              <<"Text="<<result.lengths[0]<<" Ro="<<result.lengths[1]

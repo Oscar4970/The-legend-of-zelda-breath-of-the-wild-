@@ -24,6 +24,7 @@ public final class MainActivity extends Activity {
     private static native String nativeInspectMod0(int fd);
     private static native String nativeInspectNro(int fd);
     private static native String nativeSimulateRelr(int fd);
+    private static native String nativeAuditNroRuntime(int fd);
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         ScrollView scroll = new ScrollView(this);
@@ -113,6 +114,15 @@ public final class MainActivity extends Activity {
             startActivityForResult(pick, 77);
         });
         body.addView(simulate);
+        Button audit = new Button(this);
+        audit.setText("Analizar requisitos para ejecutar NRO real (no ejecuta)");
+        audit.setOnClickListener(v -> {
+            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            pick.addCategory(Intent.CATEGORY_OPENABLE);
+            pick.setType("*/*");
+            startActivityForResult(pick, 78);
+        });
+        body.addView(audit);
         Button execute = new Button(this);
         execute.setText("Ejecutar función ARM64 ficticia (19 + 23)");
         execute.setOnClickListener(v -> {
@@ -145,15 +155,17 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if ((requestCode != REQUEST_NSO && requestCode != 74 && requestCode != 75 && requestCode != 76 && requestCode != 77) || resultCode != RESULT_OK || data == null) return;
+        if ((requestCode != REQUEST_NSO && requestCode != 74 && requestCode != 75 && requestCode != 76 && requestCode != 77 && requestCode != 78) || resultCode != RESULT_OK || data == null) return;
         Uri uri = data.getData();
         if (uri == null) return;
         try (ParcelFileDescriptor descriptor = getContentResolver().openFileDescriptor(uri, "r")) {
             if (descriptor == null) throw new IllegalStateException("No fue posible abrir el archivo.");
             System.loadLibrary("botwgpu");
-            scanResult.setText(requestCode == 77
-                ? nativeSimulateRelr(descriptor.getFd())
-                : requestCode == 76
+            scanResult.setText(requestCode == 78
+                ? nativeAuditNroRuntime(descriptor.getFd())
+                : requestCode == 77
+                  ? nativeSimulateRelr(descriptor.getFd())
+                  : requestCode == 76
                   ? nativeInspectNro(descriptor.getFd())
                   : requestCode == 75
                   ? nativeInspectMod0(descriptor.getFd())
