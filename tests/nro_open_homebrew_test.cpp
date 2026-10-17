@@ -1,6 +1,6 @@
 // Integration check against an independently published open-source Switch NRO.
 // This program only reads and prints metadata; it NEVER executes NRO instructions.
-#include "../app/src/main/cpp/nro_inspector.h"
+#include "../app/src/main/cpp/relr_sandbox.h"
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -48,4 +48,15 @@ int main(int argc,char** argv) {
         std::cerr<<"Expected real homebrew MOD0 compact RELR relocations, none decoded.\n";
         return 1;
     }
+    const auto image=relrsandbox::copyImage(data.data(),data.size(),result);
+    if(!image.ok){std::cerr<<"Failed virtual image copy.\n";return 1;}
+    const auto before=image.bytes;
+    const auto simulated=relrsandbox::simulate(image,result.mod);
+    if(!simulated.ok || simulated.patched!=result.mod.relrTargets ||
+       image.bytes!=before || simulated.copy==before){
+        std::cerr<<"Real open-source NRO RELR simulation failed: "<<simulated.error<<"\n";
+        return 1;
+    }
+    std::cout<<"PASS: simulated real homebrew RELR on isolated copy: "
+             <<simulated.patched<<" relocated addresses, input unchanged\n";
 }

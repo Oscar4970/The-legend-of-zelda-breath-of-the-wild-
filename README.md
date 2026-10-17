@@ -101,3 +101,10 @@ La vista MOD0 ahora también inspecciona las relocaciones `DT_REL` además de `D
 Gracias a la prueba v0.11 con homebrew real se detectó que el NRO publica las etiquetas `DT_RELRSZ=35`, `DT_RELR=36` y `DT_RELRENT=37`. Se agregó un **decodificador de inventario RELR ELF64**: examina entradas de dirección y sus bitmaps de 63 posiciones para contar los destinos de reubicación, comprobando alineación y límites. Nunca modifica la memoria, nunca ejecuta código externo y mantiene límites estrictos de tamaño. GitHub Actions exige ahora detectar entradas y destinos RELR en `ftpd-classic.nro` de código abierto. Incluye pruebas sintéticas de bitmap malformado y destinos fuera de memoria.
 
 Los números de esas etiquetas se contrastaron con Android Bionic y el algoritmo de decodificación con LLVM. Es un avance en el analizador, no un cargador de juego.
+
+
+## v0.13 — Reubicaciones RELR simuladas sin ejecutar código
+
+La nueva función **Simular RELR en copia de NRO (NO ejecuta)** analiza un archivo NRO abierto, comprueba su MOD0 y expande su tabla compacta RELR en una **imagen de memoria separada y no ejecutable**. Solo en esa copia suma un desplazamiento de carga simulado `0x100000000` a los punteros indicados; informa el número de punteros modificados y un ejemplo antes/después. El archivo original no se modifica, el módulo no se ejecuta y nunca se crean páginas de memoria ejecutables. Antes de modificar la copia, valida todos los destinos, los rangos y posibles desbordamientos.
+
+GitHub Actions ejecuta **11 pruebas unitarias nuevas** con datos ficticios, incluidas entradas dañadas, y exige que la misma simulación funcione con `ftpd-classic.nro` de código abierto. Esto comprueba el procesamiento de tablas RELR en una copia, **no significa que exista un cargador funcional para Switch o Zelda**. Las importaciones, los servicios Horizon y el motor NVN/Vulkan permanecen pendientes.
