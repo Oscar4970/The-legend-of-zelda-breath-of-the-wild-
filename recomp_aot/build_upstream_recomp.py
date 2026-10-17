@@ -67,8 +67,14 @@ def main():
     homebrew_out.mkdir(parents=True,exist_ok=True)
     call(sys.executable,ROOT/"recomp_aot"/"package_homebrew_nso.py",
          elf,homebrew_nso,output/"homebrew_fixture.h")
+    # The 0x00..0x3f NSO/MOD0 metadata area is not an AArch64 function.
+    # Recompile only the two function symbols extracted from the compiled ELF.
+    fixture_header=(output/"homebrew_fixture.h").read_text(encoding="utf-8")
+    match=re.search(r"kMixOffset = (0x[0-9a-f]+)",fixture_header)
+    if not match:
+        raise RuntimeError("C-compiled ELF callee symbol is absent")
     call(sys.executable,"-m","recomp",homebrew_nso,homebrew_out,
-         "--name","homebrew",cwd=vendor)
+         "--name","homebrew","--only","0x40",match.group(1),cwd=vendor)
     generated=(homebrew_out/"code_000.cpp").read_text(encoding="utf-8")
     report=(homebrew_out/"report.txt").read_text(encoding="utf-8")
     if "void homebrew_00000040(" not in generated or generated.count("void homebrew_")<2:
