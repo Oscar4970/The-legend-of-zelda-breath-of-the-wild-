@@ -7,8 +7,8 @@ android {
         applicationId 'org.example.botwlab'
         minSdk 26
         targetSdk 35
-        versionCode 17
-        versionName '0.17-spirv-triangle'
+        versionCode 18
+        versionName '0.18-aarch64-static-recomp'
         ndk { abiFilters 'arm64-v8a' }
     }
     externalNativeBuild {

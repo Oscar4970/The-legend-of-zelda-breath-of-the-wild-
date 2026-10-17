@@ -81,6 +81,18 @@ jobs:
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/vulkan_triangle_test.cpp -o /tmp/vulkan_triangle_test
           /tmp/vulkan_triangle_test
+      - name: Recompile independent AArch64 NSO with pinned open source recompiler
+        run: |
+          python3 -m venv /tmp/aot-recomp-env
+          /tmp/aot-recomp-env/bin/python -m pip install -q capstone==5.0.6 lz4==4.4.4
+          /tmp/aot-recomp-env/bin/python recomp_aot/build_upstream_recomp.py
+          g++ -std=c++20 -O2 -Wall -Wextra \
+            -I app/src/main/cpp/aot_generated/include \
+            -I app/src/main/cpp/aot_generated/output \
+            recomp_aot/host_smoke_test.cpp \
+            app/src/main/cpp/aot_generated/output/code_000.cpp \
+            -o /tmp/test_real_static_recomp
+          /tmp/test_real_static_recomp
       - name: Compile test app (NOT Zelda)
         run: gradle --no-daemon :app:assembleDebug --stacktrace
       - name: Check APK
@@ -97,7 +109,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: BOTW-Android-SPIRV-Triangle-v017-NOT-GAME
+          name: BOTW-Android-StaticRecomp-v018-NOT-GAME
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

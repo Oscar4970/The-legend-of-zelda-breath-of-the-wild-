@@ -142,3 +142,12 @@ El nuevo botón **«Probar TRIANGULO REAL con shaders SPIR-V y Vulkan»** crea u
 El build de GitHub instala `glslang-tools` y `spirv-tools`, compila los shaders del directorio `shaders/` con `glslangValidator --target-env vulkan1.3` y ejecuta `spirv-val`. El archivo de cabecera generado no se publica en el repositorio como binario; el script `scripts/generate_triangle_spirv.py` permite recrearlo. Para compilación local hay que ejecutar ese script antes de Gradle.
 
 **La ejecución real del pipeline todavía debe validarse en el Samsung**: las pruebas unitarias de la CI solo comprueban criterios de lectura de píxeles y la correcta construcción del APK. Este triángulo con SPIR-V propio **no traduce NVN ni shaders propietarios de Zelda**, ni ejecuta el juego. Es una prueba del camino Vulkan: shader → pipeline → GPU → píxeles.
+
+
+## v0.18 — Primer código recompilado desde instrucciones ARM64 reales
+
+**Avance distinto de versiones anteriores:** el APK ahora contiene una función C++ **generada automáticamente por el recompilador de SwitchGamesRecomp**, no una función C++ escrita a mano simulando instrucciones. La entrada es un NSO **propio y diminuto**, con instrucciones AArch64 reales `mov w0,#42; ret`, secciones NSO y un símbolo ELF64 propio. El generador está en `recomp_aot/generate_sample_nso.py`; no hay recursos, firmas ni código de Zelda.
+
+En GitHub Actions se obtiene el recompilador [SuperMarioWonderRecomp](https://github.com/BelmanteGu/SuperMarioWonderRecomp) de código abierto **MIT**, fijado a SHA `7c2531d9bdce94506bad9bf53d8a9848b240f111`. Se generan `funcs.h` y `code_000.cpp`, se ejecuta el C++ traducido como test de host y se incorpora al APK arm64-v8a. El botón **«Ejecutar código ARM64 RECOMPILADO REAL (muestra propia)»** llama a esa función y debe devolver el resultado 42.
+
+La app incluye los avisos de licencia y autoría de SwitchGamesRecomp. Los archivos generados no se incorporan al repositorio. **Es la primera prueba del método de recompilación estática real que queremos adaptar de GTA IV a Switch**, aunque todavía no procesa BOTW ni ejecuta sus recursos. El port completo requiere código original legítimo, grandes adaptaciones a Horizon, NVN y compilación de shaders.

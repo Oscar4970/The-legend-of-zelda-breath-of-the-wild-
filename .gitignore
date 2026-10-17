@@ -7,3 +7,9 @@ build/
 *.apk
 *.aab
 .DS_Store
+
+# Generated test artifacts and cloned upstream dependency, never commit them
+recomp_aot/_build_upstream/
+recomp_aot/_build_fixture/
+app/src/main/cpp/aot_generated/
+app/src/main/assets/THIRD_PARTY_NOTICES.txt

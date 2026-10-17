@@ -21,6 +21,7 @@ public final class MainActivity extends Activity {
     private static native String nativeVulkanRuntimeProbe();
     private static native String nativeOffscreenGpuCheck();
     private static native String nativeTriangleGpuCheck();
+    private static native String nativeRunRecompiledArm64();
     private static native String nativeInspectNso(int fd);
     private static native String nativeReconstructNso(int fd);
     private static native String nativeRunSyntheticArm64();
@@ -143,6 +144,18 @@ public final class MainActivity extends Activity {
             }, "VulkanSpirvTriangle").start();
         });
         body.addView(triangle);
+        Button recompTest=new Button(this);
+        recompTest.setText("Ejecutar código ARM64 RECOMPILADO REAL (muestra propia)");
+        recompTest.setOnClickListener(v -> {
+            try {
+                System.loadLibrary("botwgpu");
+                scanResult.setText(nativeRunRecompiledArm64());
+            } catch (Throwable error) {
+                scanResult.setText("Recompilacion no disponible: "+
+                    error.getClass().getSimpleName());
+            }
+        });
+        body.addView(recompTest);
         Button select = new Button(this);
         select.setText("Analizar NSO de Switch (solo metadatos)");
         select.setOnClickListener(v -> {
