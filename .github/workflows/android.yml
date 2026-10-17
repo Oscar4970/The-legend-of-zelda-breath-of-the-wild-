@@ -50,6 +50,11 @@ jobs:
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/nro_inspector_test.cpp -o /tmp/nro_inspector_test
           /tmp/nro_inspector_test
+      - name: Download and inspect real open-source NRO (ftpd classic, no execution)
+        run: |
+          curl --fail --location --silent --show-error --retry 2 --max-time 90             --output /tmp/ftpd-classic.nro             https://github.com/mtheall/ftpd/releases/download/v3.2.1/ftpd-classic.nro
+          g++ -std=c++17 -Wall -Wextra -Werror -O2             tests/nro_open_homebrew_test.cpp -o /tmp/nro_open_homebrew_test
+          /tmp/nro_open_homebrew_test /tmp/ftpd-classic.nro
       - name: Compile test app (NOT Zelda)
         run: gradle --no-daemon :app:assembleDebug --stacktrace
       - name: Check APK

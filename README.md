@@ -79,3 +79,8 @@ La mayoría de las demostraciones homebrew se distribuyen como archivos `.nro`, 
 **Límites:** archivos locales de máximo 16 MiB, solo NRO convencional sin compresión moderna. MOD0 puede no estar presente o no ser procesable, sin que eso signifique que el NRO es inválido. No autentica archivos, ni ejecuta el código ni utiliza claves de Nintendo. Esta versión sigue siendo una herramienta de compatibilidad experimental, no un port de BOTW.
 
 Documentación: https://switchbrew.org/wiki/NRO0 .
+
+
+## Verificación con un NRO público independiente
+
+El trabajo automático de GitHub también descarga **`ftpd-classic.nro`**, versión `v3.2.1`, desde el [proyecto abierto ftpd](https://github.com/mtheall/ftpd/releases/tag/v3.2.1), y prueba el lector de NRO de forma **exclusivamente estática**. El binario no se incluye en el APK ni en este repositorio; GitHub Actions lo descarta al finalizar. Se reconoce su estructura, pero **no se ejecuta el programa ni se inicia ningún servidor FTP**. Si el formato no es compatible, la prueba fallará, y la corrección deberá quedar registrada en el repositorio. El código fuente pertenece a sus autores originales.
