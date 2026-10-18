@@ -16,7 +16,7 @@ __attribute__((noinline,used)) uint32_t demo_entry(uint32_t seed) {
     guest_counter++;
     register uint64_t input __asm__("x0") = (uint64_t)(result ^ seed);
     __asm__ volatile ("svc #0x7e" : "+r"(input) :: "memory");
-    uint32_t result=(uint32_t)input + guest_scale + guest_bias + guest_counter;
+    uint32_t final_result=(uint32_t)input + guest_scale + guest_bias + guest_counter;
     /*
      * These are REAL Horizon ARM64 SVC instruction numbers/ABIs:
      *   0x1f ConnectToNamedPort: X1 -> port name, W0 -> Result, W1 -> Handle.
@@ -33,5 +33,5 @@ __attribute__((noinline,used)) uint32_t demo_entry(uint32_t seed) {
     register uint64_t close_result __asm__("x0") = (uint32_t)port_or_handle;
     __asm__ volatile("svc #0x16" : "+r"(close_result) : : "memory");
     if ((uint32_t)close_result != 0) return 0xfffffffeu;
-    return result;
+    return final_result;
 }
