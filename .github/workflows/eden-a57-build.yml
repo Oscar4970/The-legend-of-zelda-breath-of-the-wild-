@@ -76,17 +76,6 @@ jobs:
           python3 eden_a57/apply_to_eden.py /tmp/eden
           git -C /tmp/eden diff --check
           git -C /tmp/eden diff -- src/android/app/src/main/java/org/yuzu/yuzu_emu/YuzuApplication.kt src/video_core/vulkan_common/vulkan_device.cpp > /tmp/device-changes.patch
-      - name: Supply SDL3 Android Java bindings (matched public upstream source)
-        run: |
-          # Upstream Eden's bundled SDL3 CI archive may omit its Java Android bindings.
-          # Without these, Kotlin cannot resolve org.libsdl.app.SDL.
-          git clone --quiet --depth 1 --branch release-3.4.8 https://github.com/libsdl-org/SDL.git /tmp/sdl3-java
-          mkdir -p /tmp/eden/externals/generated/sdl/java/org/libsdl/app
-          cp /tmp/sdl3-java/android-project/app/src/main/java/org/libsdl/app/*.java \
-            /tmp/eden/externals/generated/sdl/java/org/libsdl/app/
-          test -s /tmp/eden/externals/generated/sdl/java/org/libsdl/app/SDL.java
-          test -s /tmp/eden/externals/generated/sdl/java/org/libsdl/app/SDLActivity.java
-          echo "Official zlib-licensed SDL3 Java bindings prepared for Kotlin"
       - name: Build complete Eden Android APK for Galaxy A57
         run: |
           cd /tmp/eden/src/android
