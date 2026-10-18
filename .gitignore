@@ -28,3 +28,7 @@ title.keys
 private/
 roms/
 rom_reports/
+
+# Never check in personally recompiled Nintendo game libraries
+app/src/main/jniLibs/
+port_botw/__pycache__/

@@ -213,3 +213,10 @@ La interfaz indica explícitamente **qué puede analizarse** y **qué sigue bloq
 ## v0.22 - metadatos CNMT XML de ROM local
 
 El explorador profundo de NSP analiza ahora el archivo `*.cnmt.xml` **sin extraerlo ni descifrar el juego**: presenta Title ID, tipo (juego base o actualización), versión numérica de metadatos y versión mínima del sistema, si aparecen. Lee máximo 64 KiB de XML, valida valores antes de mostrarlos y evita entidades XML. Si declara `01007EF00011E000`, muestra una coincidencia con Breath of the Wild Switch, **no una garantía de autenticidad**. No examina el ticket ni las claves y NO obtiene el ejecutable ARM64 de Zelda. Para ejecutar el juego todavía se requiere ExeFS y RomFS de una copia legítima y una adaptación Horizon/NVN funcional. Tras instalar v0.22 seleccionar el mismo NSP con «EXPLORADOR PROFUNDO DE SWITCH (SOLO LECTURA)» y compartir solamente el informe.
+
+
+## v0.23 - Objetivo nativo para la recompilacion del juego original de Switch
+
+El repositorio incorpora [port_botw/](port_botw/README.md): un objetivo de juego para el motor de [SwitchGamesRecomp](https://github.com/BelmanteGu/SuperMarioWonderRecomp), con ID oficial de BOTW para Switch y un constructor privado que recompila los módulos autenticos ExeFS/main y sdk de una copia propia a codigo nativo Android. Los scripts y el objetivo no contienen codigo ni datos de Nintendo, y excluyen los resultados privados del repositorio.
+
+La app tiene una entrada NativeActivity para ejecutar libbotw.so solo si un usuario lo compila personalmente y provisiona los recursos en su telefono. Sin biblioteca y datos, el boton permanece deshabilitado. No es un port jugable: quedan pendientes los shaders Maxwell/NVN de BOTW, compatibilidad de Horizon, SDK y verificacion de arranque. No se permite construir APKs con codigo comercial en GitHub Actions publico.

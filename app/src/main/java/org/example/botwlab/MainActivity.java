@@ -13,9 +13,23 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import java.io.File;
+import java.util.zip.ZipFile;
 
 public final class MainActivity extends Activity {
     private static final int REQUEST_NSO = 73;
+    // No Nintendo-derived game library is distributed in this repository.
+    private boolean hasPrivateGameAndData() {
+        boolean hasLibrary;
+        try (ZipFile file = new ZipFile(getApplicationInfo().sourceDir)) {
+            hasLibrary = file.getEntry("lib/arm64-v8a/libbotw.so") != null;
+        } catch (Exception ignored) { return false; }
+        File data = getExternalFilesDir(null);
+        return hasLibrary && data != null
+            && new File(data, "analysis/main.bin").isFile()
+            && new File(data, "analysis/sdk.bin").isFile()
+            && new File(data, "extract/romfs").isDirectory();
+    }
     private TextView scanResult;
     private Button shareRomReport;
     private String lastRomReport = "";
@@ -44,13 +58,28 @@ public final class MainActivity extends Activity {
         body.setGravity(Gravity.CENTER_HORIZONTAL);
         body.setPadding(32, 40, 32, 32);
         TextView heading = new TextView(this);
-        heading.setText("BOTW Android — laboratorio y análisis de archivos");
+        heading.setText("BOTW Android — port nativo de Switch");
         heading.setTextSize(24);
         body.addView(heading);
         TextView note = new TextView(this);
-        note.setText("ESTO NO ES EL JUEGO. Inspecciona ROMs de forma local y prueba componentes técnicos. No descifra ni ejecuta Zelda.");
+        note.setText("Motor nativo en desarrollo. Este APK publico no incluye ejecutables, shaders ni recursos de Nintendo. El port aun no es jugable.");
         note.setPadding(0, 25, 0, 25);
         body.addView(note);
+        boolean privateGameReady = hasPrivateGameAndData();
+        Button launchGame = new Button(this);
+        launchGame.setText(privateGameReady
+            ? "INTENTAR INICIAR BOTW (BUILD PRIVADO EXPERIMENTAL)"
+            : "BOTW NO DISPONIBLE: faltan codigo nativo y recursos");
+        launchGame.setEnabled(privateGameReady);
+        launchGame.setOnClickListener(v ->
+            startActivity(new Intent(this, android.app.NativeActivity.class)));
+        body.addView(launchGame);
+        TextView gameStatus = new TextView(this);
+        gameStatus.setPadding(0, 4, 0, 16);
+        gameStatus.setText(privateGameReady
+            ? "Biblioteca y datos detectados. Su presencia no garantiza arranque; Horizon y NVN pueden fallar."
+            : "El motor privado requiere archivos legitimos, recompilacion de BOTW y datos locales. Revisa port_botw/README.md.");
+        body.addView(gameStatus);
         TextView info = new TextView(this);
         StringBuilder text = new StringBuilder();
         text.append("Modelo: ").append(Build.MANUFACTURER).append(" ").append(Build.MODEL).append("\n");

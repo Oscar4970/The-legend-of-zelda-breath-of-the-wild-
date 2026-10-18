@@ -26,6 +26,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Validate private BOTW native port builder without game data
+        run: |
+          python3 -m unittest discover -s tests -p botw_port_builder_test.py -v
+          python3 port_botw/build_port.py --help > /tmp/botw-port-usage.txt
       - name: Deep Switch ROM inspector tests (synthetic NSP XCI NSO NRO only)
         run: |
           g++ -std=c++20 -Wall -Wextra -Werror -O2 \
@@ -130,7 +134,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: BOTW-Android-CNMT-XML-v022-NOT-GAME
+          name: BOTW-Android-NativePortFoundation-v023-NOT-PLAYABLE
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7
