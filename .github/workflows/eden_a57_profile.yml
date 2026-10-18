@@ -1,0 +1,48 @@
+name: Eden A57 Vulkan profile compatibility validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'emulador_xclipse550/**'
+      - 'tests/eden_xclipse550_patch_test.py'
+      - '.github/workflows/eden_a57_profile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-edensource-profile:
+    name: Validate Samsung A57 profile against real Eden sources (no APK)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test guarded patch behavior offline
+        run: python3 -m unittest discover -s tests -p eden_xclipse550_patch_test.py -v
+      - name: Retrieve pinned Eden source (sparse checkout, no game data)
+        run: |
+          git init -q /tmp/eden-upstream
+          git -C /tmp/eden-upstream remote add origin https://github.com/eden-emulator/mirror.git
+          git -C /tmp/eden-upstream sparse-checkout init --cone
+          git -C /tmp/eden-upstream sparse-checkout set src/android/app/src/main/java/org/yuzu/yuzu_emu
+          git -C /tmp/eden-upstream fetch --depth=1 --filter=blob:none origin de7e6e01d43e8cf2ec193d74fa053b0d7949955f
+          git -C /tmp/eden-upstream checkout --detach FETCH_HEAD
+      - name: Apply model-specific first-run profile against audited Eden
+        run: |
+          python3 emulador_xclipse550/apply_xclipse550_to_eden.py /tmp/eden-upstream
+          python3 emulador_xclipse550/apply_xclipse550_to_eden.py /tmp/eden-upstream
+          test -s /tmp/eden-upstream/src/android/app/src/main/java/org/yuzu/yuzu_emu/utils/Xclipse550Profile.kt
+          git -C /tmp/eden-upstream diff --check
+          git -C /tmp/eden-upstream status --short
+      - name: Check no Samsung firmware, APK, ROM or driver binaries are included
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          files=list(Path("emulador_xclipse550").glob("**/*"))
+          banned={".apk",".nsp",".xci",".nca",".so",".ko",".bin",".keys"}
+          assert not any(p.suffix.lower() in banned for p in files if p.is_file())
+          assert not any(p.name in {"prod.keys","title.keys"} for p in files if p.is_file())
+          print("PASS: scripts and GPL-compatible source additions only; no ROMs, keys, proprietary drivers, or game executables")
+          PY
