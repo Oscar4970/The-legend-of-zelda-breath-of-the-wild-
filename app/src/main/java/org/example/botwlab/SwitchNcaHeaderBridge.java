@@ -50,7 +50,8 @@ public final class SwitchNcaHeaderBridge {
                 while (end < size && raw[end] != '\n' && raw[end] != '\r') end++;
                 int i = start;
                 while (i < end && space(raw[i])) i++;
-                if (i + NAME.length <= end && matches(raw, i, NAME)) {
+                if (i + NAME.length < end && matches(raw, i, NAME) &&
+                    (space(raw[i + NAME.length]) || raw[i + NAME.length] == '=')) {
                     int k = i + NAME.length;
                     while (k < end && space(raw[k])) k++;
                     if (k >= end || raw[k] != '=')
