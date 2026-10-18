@@ -24,16 +24,17 @@ class KitTests(unittest.TestCase):
 
     def test_git_blob_sha1(self):
         import hashlib
-        blob = b"test\\n"
-        digest = hashlib.sha1(b"blob 5\\0" + blob).hexdigest()
+        blob = b"test\n"
+        digest = hashlib.sha1(b"blob 5\0" + blob).hexdigest()
         self.assertEqual(kit.git_blob_sha1(blob), digest)
+        self.assertEqual(kit.git_blob_sha1(b"test\n"), "9daeafb9864cf43055ae93beb0afd6c7d144bfa4")
 
     def test_mismatched_commit_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / ".git").mkdir()
             manifest = kit.load_manifest()
-            with mock.patch.object(kit.subprocess, "check_output", return_value="000000\\n"):
+            with mock.patch.object(kit.subprocess, "check_output", return_value="000000\n"):
                 with self.assertRaises(kit.KitError):
                     kit.verify_source_checkout(root, manifest)
 
@@ -42,7 +43,7 @@ class KitTests(unittest.TestCase):
             root = Path(tmp)
             (root / ".git").mkdir()
             (root / "LICENSE.txt").write_text("GPL sample fixture")
-            fake = b"// SPDX-License-Identifier: GPL-3.0-or-later\\n"
+            fake = b"// SPDX-License-Identifier: GPL-3.0-or-later\n"
             src = root / "src" / "test.cpp"
             src.parent.mkdir(parents=True)
             src.write_bytes(fake)
