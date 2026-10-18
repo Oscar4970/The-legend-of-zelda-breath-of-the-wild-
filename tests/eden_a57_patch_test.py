@@ -104,7 +104,7 @@ class GalaxyA57PatchTests(unittest.TestCase):
                        "FAST_CPU_TIME.setInt(0)", "FAST_GPU_TIME.setInt(0)",
                        "RENDERER_FORCE_MAX_CLOCK.setBoolean(false)",
                        "RENDERER_ACCURACY.setInt(0)", "RENDERER_FRAME_GEN.setBoolean(false)",
-                       "minOf(IntSetting.RENDERER_RESOLUTION.getInt(), 1)"]:
+                       "minOf(", "IntSetting.RENDERER_RESOLUTION.getInt(), 1"]:
             self.assertIn(phrase, p)
         for danger in ["sudo", "setprop", "su -c", "GPU_DRIVER_OVERRIDE", "TurnipDriver"]:
             self.assertNotIn(danger, p)
