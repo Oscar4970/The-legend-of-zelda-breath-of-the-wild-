@@ -50,6 +50,26 @@ jobs:
           git -C /tmp/eden checkout --detach "$EDEN_PIN"
           test "$(git -C /tmp/eden rev-parse HEAD)" = "$EDEN_PIN"
           git -C /tmp/eden submodule update --init --recursive --depth=1
+      - name: Stage SDL3 Android Java JNI wrappers at native SDL version
+        run: |
+          # Eden's Gradle sourceset references generated/sdl/java, which is not
+          # included in a fresh checkout. Fetch the matching official SDL3
+          # sources (SDL's own zlib license), never a stub implementation.
+          SDL_PIN=147a8ee32dbf9ac02f3794964490687b6bbda1bc
+          git init -q /tmp/SDL3-Java
+          git -C /tmp/SDL3-Java remote add origin https://github.com/libsdl-org/SDL.git
+          git -C /tmp/SDL3-Java sparse-checkout init --cone
+          git -C /tmp/SDL3-Java sparse-checkout set android-project/app/src/main/java/org/libsdl/app
+          git -C /tmp/SDL3-Java fetch --depth=1 --filter=blob:none origin "$SDL_PIN"
+          git -C /tmp/SDL3-Java checkout --detach FETCH_HEAD
+          test "$(git -C /tmp/SDL3-Java rev-parse HEAD)" = "$SDL_PIN"
+          source=/tmp/SDL3-Java/android-project/app/src/main/java/org/libsdl/app
+          target=/tmp/eden/externals/generated/sdl/java/org/libsdl/app
+          mkdir -p "$target"
+          cp "$source"/*.java "$target"/
+          test -s "$target/SDL.java"
+          test -s "$target/SDLActivity.java"
+          echo "Staged $(find "$target" -name '*.java' | wc -l) official SDL3 Java wrappers"
       - name: Apply Samsung Xclipse 550 first-run settings + Vulkan driver diagnostics
         run: |
           python3 -m unittest discover -s tests -p eden_a57_patch_test.py -v
