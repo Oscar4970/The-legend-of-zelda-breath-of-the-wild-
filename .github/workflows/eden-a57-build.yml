@@ -40,7 +40,7 @@ jobs:
       - name: Prepare build prerequisites
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ninja-build ccache libssl-dev pkg-config
+          sudo apt-get install -y -qq ninja-build ccache libssl-dev pkg-config glslang-tools spirv-tools
           df -h .
       - name: Fetch exact Eden source revision (not a Nintendo game)
         run: |
