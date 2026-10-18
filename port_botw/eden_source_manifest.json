@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "source_repository": "https://github.com/eden-emulator/mirror",
+  "source_commit": "de7e6e01d43e8cf2ec193d74fa053b0d7949955f",
+  "license": "GPL-3.0-or-later (with preserved per-file SPDX identifiers)",
+  "status": "REFERENCE_ONLY_NOT_BUILDABLE_NOT_PLAYABLE",
+  "files": [
+    {
+      "path": "src/video_core/vulkan_common/vulkan_device.cpp",
+      "sha": "be09bca8d34e5c5e63b0ae07b10487b79c6c556e",
+      "role": "Referencia: detección de capacidades y fallbacks Vulkan (no reutilizable aislado)."
+    },
+    {
+      "path": "src/video_core/vulkan_common/vulkan_device.h",
+      "sha": "bbf3754e39d6e549b65d27efe4b8fecd37f070d8",
+      "role": "Tipos/dispositivo Vulkan de Eden, requiere subsistema completo."
+    },
+    {
+      "path": "src/video_core/renderer_vulkan/vk_pipeline_cache.cpp",
+      "sha": "a85e2811a333b5c5bac44d9b1077a138c7bbc7b3",
+      "role": "Referencia: caché Vulkan y compilación de pipelines, muy acoplada al emulador."
+    },
+    {
+      "path": "src/video_core/renderer_vulkan/vk_pipeline_cache.h",
+      "sha": "71dfb46e3d425f605b38627d3d480fe9c936a90c",
+      "role": "Interfaz de caché y pipelines; no puede insertarse sin sus dependencias."
+    },
+    {
+      "path": "src/shader_recompiler/frontend/maxwell/decode.cpp",
+      "sha": "251b370efa70326cf1133985ae37aa763caf83cc",
+      "role": "Referencia: decodificador de instrucciones Maxwell; integrar requeriría shader translator completo."
+    },
+    {
+      "path": "src/shader_recompiler/frontend/maxwell/decode.h",
+      "sha": "fc2fc016a58d4a72e4269b6e4a9cc8c04cbaa4d3",
+      "role": "Interfaz de decodificación, con dependencias de shader_recompiler."
+    },
+    {
+      "path": "src/shader_recompiler/backend/spirv/emit_spirv.h",
+      "sha": "c88f07c9cedf95b173a4bb49651df050fcd043e0",
+      "role": "Referencia: generación SPIR-V del emulador; no convierte un juego por sí misma."
+    },
+    {
+      "path": "src/android/app/src/main/jni/emu_window/emu_window.cpp",
+      "sha": "8dfea40693ef750350dd5dfc6252d5bec6b185c1",
+      "role": "Referencia: ciclo de vida de superficie Android; no portar la app completa."
+    },
+    {
+      "path": "src/android/app/src/main/java/org/yuzu/yuzu_emu/utils/GpuDriverHelper.kt",
+      "sha": "13d5da3a5a92d9ba4cf72e3b68d10e2f566813ca",
+      "role": "Referencia: detección del driver Android; no instalar drivers de otras GPUs."
+    }
+  ]
+}

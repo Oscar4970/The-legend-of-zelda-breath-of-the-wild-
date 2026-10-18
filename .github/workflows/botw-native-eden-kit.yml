@@ -1,0 +1,49 @@
+name: BOTW Native Eden GPL reference kit (NOT PLAYABLE)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'port_botw/eden_source_manifest.json'
+      - 'port_botw/collect_eden_reference.py'
+      - 'port_botw/EDEN_REUSE_FOR_NATIVE.md'
+      - 'tests/eden_reference_kit_test.py'
+      - '.github/workflows/botw-native-eden-kit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-kit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout own native port scaffolding
+        uses: actions/checkout@v4
+      - name: Verify safe source collector offline
+        run: python3 -m unittest discover -s tests -p eden_reference_kit_test.py -v
+      - name: Checkout EXACT GPL Eden source reference
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/eden-emulator/mirror.git /tmp/eden-native-ref
+          git -C /tmp/eden-native-ref fetch --depth=1 origin de7e6e01d43e8cf2ec193d74fa053b0d7949955f
+          git -C /tmp/eden-native-ref checkout --detach de7e6e01d43e8cf2ec193d74fa053b0d7949955f
+      - name: Build reference ZIP (NO GAME, NO APK)
+        run: |
+          python3 port_botw/collect_eden_reference.py --eden-root /tmp/eden-native-ref --output output/Eden_BOTW_Native_Reference_Kit.zip
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          p = "output/Eden_BOTW_Native_Reference_Kit.zip"
+          with ZipFile(p) as z:
+              names = z.namelist()
+              assert "manifest.json" in names and "LICENSE_Eden_GPLv3.txt" in names
+              assert sum(x.startswith("eden/") for x in names) >= 5
+              assert not any(x.endswith((".apk",".nso",".nsp",".xci")) for x in names)
+              print("VERIFIED ZIP with",len(names),"entries")
+          PY
+      - name: Publish source kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: Eden-BOTW-NATIVE-REFERENCE-SOURCE-KIT-NOT-PLAYABLE
+          path: output/Eden_BOTW_Native_Reference_Kit.zip
+          retention-days: 7
+          if-no-files-found: error
