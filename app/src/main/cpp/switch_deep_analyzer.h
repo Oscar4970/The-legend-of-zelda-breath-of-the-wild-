@@ -4,6 +4,7 @@
 // Format specs: switchbrew.org/wiki/XCI, switchbrew.org/wiki/NCA, switchbrew.org/wiki/NSO0
 #pragma once
 #include "switch_container_inspector.h"
+#include "switch_cnmt_xml.h"
 #include "nso_format.h"
 #include "nro_inspector.h"
 #include <array>
@@ -36,7 +37,7 @@ struct Directory {
 };
 struct Summary {
     uint32_t nca=0, encryptedOrUnknown=0, readableNca=0, program=0, meta=0, control=0;
-    uint32_t executables=0, tickets=0, certificates=0, other=0;
+    uint32_t executables=0, tickets=0, certificates=0, xmlMetadata=0, other=0;
     uint64_t payloadBytes=0;
 };
 
@@ -209,13 +210,36 @@ inline std::string reportNro(int fd,const Entry& e) {
      <<". Puede servir para probar el runtime, NO es el codigo de Zelda.";
     return o.str();
 }
+inline std::string reportCnmtXml(int fd,const Entry& e,Summary& summary) {
+ ++summary.xmlMetadata;
+ if(!e.bytes||e.bytes>65536)return "CNMT XML sin analizar: tamano fuera del limite 64 KiB.";
+ std::string xml(static_cast<size_t>(e.bytes),'\0');
+ if(!read(fd,xml.data(),xml.size(),e.absolute))return "CNMT XML: error de lectura.";
+ const auto d=switchcnmt::parse(xml);
+ if(!d.valid)return "CNMT XML sin campos basicos validos: sin conclusion.";
+ std::ostringstream s;
+ s<<"METADATOS CNMT XML (declaraciones SIN autentificar):\n"
+  <<"      Title ID: "<<d.id<<"\n"
+  <<"      Tipo: "<<d.type<<(d.type=="Application"?" (juego base)":d.type=="Patch"?" (actualizacion)":"")<<"\n"
+  <<"      Version numerica CNMT: "<<d.version<<" (no es version comercial 1.x.x)\n";
+ if(d.hasFirmware)s<<"      RequiredSystemVersion: "<<d.firmware<<"\n";
+ if(d.id=="01007EF00011E000")
+     s<<"      COINCIDE: ID declarado de Breath of the Wild (Switch) base.\n";
+ else if(d.id=="01007EF00011E800")
+     s<<"      COINCIDE: ID declarado de la actualizacion de BOTW (Switch).\n";
+ else s<<"      No coincide con el ID conocido de BOTW base.\n";
+ s<<"      Esto NO prueba autenticidad ni desbloquea codigo dentro de NCA.";
+ return s.str();
+}
+
 inline void classify(int fd,const Entry& e,Summary& summary,std::ostringstream& output,
                      bool visible) {
     if(summary.payloadBytes>UINT64_MAX-e.bytes)summary.payloadBytes=UINT64_MAX;
     else summary.payloadBytes+=e.bytes;
     if(visible)output<<"  "<<e.name<<" — "<<sizes(e.bytes)<<"\n";
     std::string info;
-    if(suffix(e.name,".nca"))info=reportNca(fd,e,summary);
+    if(suffix(e.name,".cnmt.xml"))info=reportCnmtXml(fd,e,summary);
+    else if(suffix(e.name,".nca"))info=reportNca(fd,e,summary);
     else if(suffix(e.name,".tik")){++summary.tickets;info="Ticket; NO se extraen ni muestran claves.";}
     else if(suffix(e.name,".cert")){++summary.certificates;info="Certificado (no autentificado).";}
     else if(suffix(e.name,".nso")){++summary.executables;info=reportNso(fd,e);}
@@ -244,7 +268,7 @@ inline std::string summarize(Summary sum) {
      <<" | Control: "<<sum.control<<" (solo si cabecera legible)\n"
      <<"NSO/NRO directos: "<<sum.executables
      <<" | Tickets: "<<sum.tickets<<" | Certificados: "<<sum.certificates
-     <<" | Otros: "<<sum.other<<"\n";
+     <<" | CNMT XML: "<<sum.xmlMetadata<<" | Otros: "<<sum.other<<"\n";
     if(sum.executables)
         s<<"CODIGO: hay ejecutables visibles; comprobar instrucciones e imports en su analizador.\n";
     else if(sum.program)

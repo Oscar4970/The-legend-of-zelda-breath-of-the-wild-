@@ -208,3 +208,8 @@ El APK incorpora **«ANALIZAR ROM A FONDO»**, que permite elegir un archivo loc
 La interfaz indica explícitamente **qué puede analizarse** y **qué sigue bloqueado** por cifrado o APIs de Switch faltantes. Tests en CI con datos completamente sintéticos cubren NSP, XCI/HFS0 anidado, NCA ilegible y legible, ejecutable NSO/NRO y cabeceras malformadas. Diseño basado en [Switchbrew XCI](https://switchbrew.org/wiki/XCI), [NCA](https://switchbrew.org/wiki/NCA) y [NSO0](https://switchbrew.org/wiki/NSO0).
 
 **No incluye el juego, ni lo ejecuta, ni convierte una ROM automáticamente en APK jugable.** Las ROMs protegidas se trabajan solo si proceden de copias legítimas y se manejan localmente.
+
+
+## v0.22 - metadatos CNMT XML de ROM local
+
+El explorador profundo de NSP analiza ahora el archivo `*.cnmt.xml` **sin extraerlo ni descifrar el juego**: presenta Title ID, tipo (juego base o actualización), versión numérica de metadatos y versión mínima del sistema, si aparecen. Lee máximo 64 KiB de XML, valida valores antes de mostrarlos y evita entidades XML. Si declara `01007EF00011E000`, muestra una coincidencia con Breath of the Wild Switch, **no una garantía de autenticidad**. No examina el ticket ni las claves y NO obtiene el ejecutable ARM64 de Zelda. Para ejecutar el juego todavía se requiere ExeFS y RomFS de una copia legítima y una adaptación Horizon/NVN funcional. Tras instalar v0.22 seleccionar el mismo NSP con «EXPLORADOR PROFUNDO DE SWITCH (SOLO LECTURA)» y compartir solamente el informe.

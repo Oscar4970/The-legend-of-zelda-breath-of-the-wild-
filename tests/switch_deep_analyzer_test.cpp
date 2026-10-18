@@ -76,6 +76,38 @@ Bytes nca(bool plain) {
 }
 int main() {
     {
+        const std::string meta=R"XML(<?xml version="1.0"?>
+<ContentMeta><Type>Application</Type><Id>0x01007EF00011E000</Id>
+<Version>0</Version>
+<Content><Type>Program</Type><Id>DO_NOT_LEAK</Id></Content>
+<RequiredSystemVersion>65536</RequiredSystemVersion>
+</ContentMeta>)XML";
+        const Bytes text(meta.begin(),meta.end());
+        const auto output=check(pfs({{"something.cnmt.xml",text},{"large.nca",nca(false)}}));
+        assert(contains(output,"CNMT XML: 1"));
+        assert(contains(output,"Title ID: 01007EF00011E000"));
+        assert(contains(output,"Tipo: Application (juego base)"));
+        assert(contains(output,"Version numerica CNMT: 0"));
+        assert(contains(output,"COINCIDE: ID declarado de Breath of the Wild"));
+        assert(!contains(output,"DO_NOT_LEAK"));
+        std::cout<<"PASS: plaintext CNMT XML metadata selectively parsed; payload not echoed\n";
+    }
+    {
+        const auto good=switchcnmt::parse(
+            "<ContentMeta><Type>Patch</Type><Id>01007ef00011e800</Id>"
+            "<Version>65536</Version></ContentMeta>");
+        assert(good.valid && good.type=="Patch" && good.version==65536);
+        const auto bad=switchcnmt::parse(
+            "<!DOCTYPE anything><ContentMeta><Type>Application</Type>"
+            "<Id>01007ef00011e000</Id><Version>0</Version></ContentMeta>");
+        assert(!bad.valid);
+        assert(!switchcnmt::parse(
+            "<ContentMeta><Type>Application</Type><Id>01007EF00011E000</Id>"
+            "<Version>999999999999</Version></ContentMeta>").valid);
+        std::cout<<"PASS: XML rejects entity preamble and huge version\n";
+    }
+
+    {
         const auto image=pfs({{"one.nca",nca(false)},
                               {"two.cnmt.nca",nca(true)},
                               {"test.tik",Bytes(10,0)},
