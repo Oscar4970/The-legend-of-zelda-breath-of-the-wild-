@@ -53,7 +53,7 @@ public final class SwitchNcaHeaderBridgeTest {
     public static void main(String[] args) throws Exception {
         byte[] key = new byte[32];
         for (int i = 0; i < key.length; i++) key[i] = (byte)i;
-        String named = "unrelated_key = aabb\n# comment\nheader_key = " + hex(key) + "\n";
+        String named = "unrelated_key = aabb\nheader_key_source = aabb\n# comment\nheader_key = " + hex(key) + "\n";
         byte[] read = SwitchNcaHeaderBridge.loadHeaderKey(
             new ByteArrayInputStream(named.getBytes(StandardCharsets.US_ASCII)));
         check(Arrays.equals(key, read), "read a fake header_key from local bytes");
