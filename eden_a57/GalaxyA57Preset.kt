@@ -29,6 +29,22 @@ import org.yuzu.yuzu_emu.features.settings.model.IntSetting
 object GalaxyA57Preset {
     private const val PREF_NAME = "galaxy_a57_eden_experiment"
     private const val APPLIED_KEY = "profile_v1_applied"
+    private const val MEMORY_V2_KEY = "profile_v2_low_memory_applied"
+
+    // Use Eden's existing configuration to limit GPU shader compilation pressure.
+    private fun applyLowMemorySettings() {
+        IntSetting.ANDROID_PIPELINE_WORKERS.setInt(2)
+        IntSetting.MEMORY_LAYOUT.setInt(0) // 4 GiB emulated Switch memory
+    }
+
+    private fun savePreV2Settings(prefs: android.content.SharedPreferences) {
+        if (!prefs.contains("old_workers")) {
+            prefs.edit()
+                .putInt("old_workers", IntSetting.ANDROID_PIPELINE_WORKERS.getInt())
+                .putInt("old_memory", IntSetting.MEMORY_LAYOUT.getInt())
+                .apply()
+        }
+    }
 
     fun isTargetDevice(): Boolean {
         val model = Build.MODEL.uppercase(Locale.ROOT)
@@ -40,9 +56,19 @@ object GalaxyA57Preset {
         if (!isTargetDevice()) return
 
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        if (prefs.getBoolean(APPLIED_KEY, false)) return
-        // Guard against accidentally editing a per-game profile.
+        // Do not touch a per-game configuration.
         if (NativeConfig.isPerGameConfigLoaded()) return
+        if (prefs.getBoolean(MEMORY_V2_KEY, false)) return
+
+        // Previous v1 installations retain their other customized preferences.
+        if (prefs.getBoolean(APPLIED_KEY, false)) {
+            savePreV2Settings(prefs)
+            applyLowMemorySettings()
+            NativeConfig.saveGlobalConfig()
+            prefs.edit().putBoolean(MEMORY_V2_KEY, true).apply()
+            return
+        }
+        savePreV2Settings(prefs)
 
         // Keep original values for targeted rollback without clearing game data.
         prefs.edit()
@@ -74,8 +100,12 @@ object GalaxyA57Preset {
 
         // Do NOT force ASTC decode paths, BC1, depth/stencil, EDS3 or custom
         // drivers: the Vulkan device must advertise actual support itself.
+        applyLowMemorySettings()
         NativeConfig.saveGlobalConfig()
-        prefs.edit().putBoolean(APPLIED_KEY, true).apply()
+        prefs.edit()
+            .putBoolean(APPLIED_KEY, true)
+            .putBoolean(MEMORY_V2_KEY, true)
+            .apply()
     }
 
     /**
@@ -102,8 +132,14 @@ object GalaxyA57Preset {
         BooleanSetting.RENDERER_ASYNCHRONOUS_GPU_EMULATION.setBoolean(
             prefs.getBoolean("old_async_gpu", true))
         BooleanSetting.RENDERER_FRAME_GEN.setBoolean(prefs.getBoolean("old_framegen", false))
+        if (prefs.contains("old_workers")) {
+            IntSetting.ANDROID_PIPELINE_WORKERS.setInt(prefs.getInt("old_workers", 2))
+        }
+        if (prefs.contains("old_memory")) {
+            IntSetting.MEMORY_LAYOUT.setInt(prefs.getInt("old_memory", 0))
+        }
         NativeConfig.saveGlobalConfig()
-        prefs.edit().remove(APPLIED_KEY).apply()
+        prefs.edit().remove(APPLIED_KEY).remove(MEMORY_V2_KEY).apply()
         return true
     }
 }

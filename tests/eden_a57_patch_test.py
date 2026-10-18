@@ -85,9 +85,11 @@ class GalaxyA57PatchTests(unittest.TestCase):
     def test_profile_is_samsung_a57_only_and_saves(self):
         p = (ROOT / "eden_a57" / "GalaxyA57Preset.kt").read_text()
         for phrase in ["SM-A576", 'equals("samsung"', "if (!isTargetDevice()) return",
-                       "if (prefs.getBoolean(APPLIED_KEY, false)) return", "NativeConfig.saveGlobalConfig()",
+                       "if (prefs.getBoolean(APPLIED_KEY, false)) {", "NativeConfig.saveGlobalConfig()",
                        "restorePrevious", "RENDERER_ASYNCHRONOUS_SHADERS",
-                       "RENDERER_USE_DISK_SHADER_CACHE", "CPU_BACKEND.setInt(1)"]:
+                       "RENDERER_USE_DISK_SHADER_CACHE", "CPU_BACKEND.setInt(1)",
+                       "ANDROID_PIPELINE_WORKERS.setInt(2)", "MEMORY_LAYOUT.setInt(0)",
+                       "MEMORY_V2_KEY", "savePreV2Settings"]:
             self.assertIn(phrase, p)
         for danger in ["sudo", "setprop", "su -c", "GPU_DRIVER_OVERRIDE", "TurnipDriver"]:
             self.assertNotIn(danger, p)

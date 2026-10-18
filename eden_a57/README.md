@@ -70,3 +70,15 @@ fuente de la variante si se distribuye. No introducir archivos Nintendo.
 Referencia: Eden GPLv3 / código fuente GNU GPL.
 Eden ya proporciona sustitutos de profundidad D24/S8
 en \`src/video_core/vulkan_common/vulkan_device.cpp\`.
+
+
+## v2 - Perfil de baja memoria (18 octubre 2026)
+
+Se limita a 2 el numero de trabajadores de compilacion Vulkan mediante
+`ANDROID_PIPELINE_WORKERS` y se fija 4 GiB de memoria emulada con
+`MEMORY_LAYOUT`. No se modifican driver, kernel ni datos de juego.
+
+Esta version migra el perfil anterior v1 (solo los dos ajustes nuevos), mantiene
+la resolucion y preferencias personalizadas y guarda los dos valores anteriores
+para restauracion. Menor concurrencia puede aumentar los tiempos de compilacion
+inicial. No hay medicion de FPS ni prueba de ejecucion real certificada.
