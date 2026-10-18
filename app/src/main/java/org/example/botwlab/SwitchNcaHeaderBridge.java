@@ -104,7 +104,9 @@ public final class SwitchNcaHeaderBridge {
     }
 
     // Standard XTS-AES-128 with a 512-byte NCA header data unit and
-    // 128-bit little-endian sector index. No CBC/CTR or fake "decrypt" shortcut.
+    // Nintendo XTS IV uses a BIG-ENDIAN sector index (sector 1 is IV[15] = 1).
+    // The internal GF(2^128) tweak multiplication is LITTLE-endian: these differ.
+    // No CBC/CTR or fake "decrypt" shortcut.
     private static void multiplyTweak(byte[] tweak) {
         int carry = 0;
         for (int i = 0; i < 16; i++) {
@@ -123,7 +125,6 @@ public final class SwitchNcaHeaderBridge {
         byte[] plaintext = new byte[SAMPLE_SIZE];
         byte[] tweak = new byte[16];
         byte[] block = new byte[16];
-        byte[] xored = new byte[16];
         Cipher dataCipher = Cipher.getInstance("AES/ECB/NoPadding");
         Cipher tweakCipher = Cipher.getInstance("AES/ECB/NoPadding");
         dataCipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, 0, 16, "AES"));
@@ -131,7 +132,8 @@ public final class SwitchNcaHeaderBridge {
         try {
             for (int sector = 0; sector < SAMPLE_SIZE / SECTOR_SIZE; sector++) {
                 Arrays.fill(tweak, (byte)0);
-                tweak[0] = (byte)sector;
+                // Verified against Eden's AesXtsStorage::MakeAesXtsIv.
+                tweak[15] = (byte)sector;
                 byte[] encryptedTweak = tweakCipher.doFinal(tweak);
                 System.arraycopy(encryptedTweak, 0, tweak, 0, 16);
                 Arrays.fill(encryptedTweak, (byte)0);
@@ -149,7 +151,6 @@ public final class SwitchNcaHeaderBridge {
         } finally {
             Arrays.fill(tweak, (byte)0);
             Arrays.fill(block, (byte)0);
-            Arrays.fill(xored, (byte)0);
         }
     }
 

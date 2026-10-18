@@ -34,3 +34,16 @@ La implementación no intenta modificar o instalar controladores Samsung.
 La ruta de port ya existente sigue siendo \`port_botw\` (AArch64 → C++,
 servicios Horizon y NVN→Vulkan). Este puente es una prueba de
 compatibilidad del contenedor, no una forma de saltarse las otras etapas.
+
+## Corrección v0.26 — contador de sectores AES-XTS
+
+La primera prueba real en Galaxy A57 leyó cuatro NCA cifrados, pero no
+reconoció ninguno. Al comparar con el código original de Eden se comprobó
+que nuestro IV codificaba el índice de sector en el byte 0 (little-endian),
+cuando el almacenamiento Nintendo/Eden usa **big-endian** (el sector 1
+corresponde a IV[15] = 1). Se corrigió la diferencia y se actualizó el
+vector de prueba independiente de OpenSSL para el sector 1.
+
+La corrección no descifra ni exporta recursos y no implica aún que las claves
+del usuario sean correctas. La siguiente verificación debe ocurrir en el
+Galaxy A57 con su NSP y el archivo de claves **seleccionado localmente**.

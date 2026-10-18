@@ -28,7 +28,8 @@ public final class SwitchNcaHeaderBridgeTest {
         tweakAes.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, 16, 16, "AES"));
         for (int sector = 0; sector < 2; sector++) {
             byte[] iv = new byte[16];
-            iv[0] = (byte)sector;
+            // Independent implementation of Nintendo's big-endian XTS data-unit IV.
+            iv[15] = (byte)sector;
             byte[] tweak = tweakAes.doFinal(iv);
             for (int offset = 0; offset < 512; offset += 16) {
                 int at = sector * 512 + offset;
@@ -71,7 +72,7 @@ public final class SwitchNcaHeaderBridgeTest {
             "f071a2b402c105ea37024133e24d6ef6212e8cc0175e1b6b32657d54f159daf6"),
             "XTS sector 0 differs from independent implementation");
         check(hex(Arrays.copyOfRange(cipher, 512, 544)).equals(
-            "2bd9d8beed00f040deb92ee3a88fe99cb09ddf7813a0ff89e2d9e7bd612aebcb"),
+            "b7d83a5910831ba82bed19878404c2cfb099d69f7ad608fbfc2cef09964f9850"),
             "XTS sector 1 differs from independent implementation");
         byte[] decrypted = SwitchNcaHeaderBridge.decryptHeader(cipher,key);
         check(Arrays.equals(plain, decrypted), "local decryption of synthetic header");
