@@ -14,7 +14,15 @@
 #endif
 
 namespace {
-thread_local uint32_t svc_calls=0;
+// Test-only Horizon SVC dispatcher state, isolated per executing thread.
+struct ServiceState {
+  uint32_t calls=0, connects=0, closes=0, rejected=0;
+  bool handle_open=false;
+};
+thread_local ServiceState service_state{};
+constexpr uint32_t kTestServiceHandle=0xA110;
+constexpr uint32_t kInvalidHandleResult=0xE401;
+constexpr uint32_t kBadPortResult=0xE402;
 
 class GuestMap {
   void* allocated_=MAP_FAILED;
@@ -78,12 +86,48 @@ uint32_t invoke(uint32_t seed) {
 }
 } // namespace
 
-// This is a NON-HORIZON, internal test service. Real Horizon IPC is NOT implemented.
+// Horizon ABI only: 0x1f/0x16 are real service call numbers, but the
+// underlying "sm:" service in this example is a deliberately tiny mock.
 namespace nx {
 void svc(CPU& c,uint32_t imm,uint64_t) {
-  if(imm!=0x7e) throw std::runtime_error("Unsupported SVC from test executable");
-  ++svc_calls;
-  c.x[0]=static_cast<uint32_t>(c.x[0])+11u;
+  switch(imm) {
+    case 0x7e: // Internal synthetic arithmetic service from the v0.19 test.
+      ++service_state.calls;
+      c.x[0]=static_cast<uint32_t>(c.x[0])+11u;
+      return;
+    case 0x1f: { // Horizon ConnectToNamedPort: X1 name -> W0 result, W1 handle.
+      const uint64_t ptr=c.x[1];
+      const bool valid_range=ptr>=NX_BASE &&
+          ptr-NX_BASE<=homebrew_fixture::kMapBytes-4;
+      if(!valid_range ||
+         std::memcmp(reinterpret_cast<const void*>(static_cast<uintptr_t>(ptr)),
+                     "sm:",4)!=0 || service_state.handle_open) {
+        ++service_state.rejected;
+        c.x[0]=kBadPortResult;
+        c.x[1]=0;
+        return;
+      }
+      service_state.handle_open=true;
+      ++service_state.connects;
+      c.x[0]=0; // Horizon ResultSuccess
+      c.x[1]=kTestServiceHandle;
+      return;
+    }
+    case 0x16: { // Horizon CloseHandle: W0 handle -> W0 result.
+      const uint32_t handle=static_cast<uint32_t>(c.x[0]);
+      if(handle!=kTestServiceHandle || !service_state.handle_open) {
+        ++service_state.rejected;
+        c.x[0]=kInvalidHandleResult;
+        return;
+      }
+      service_state.handle_open=false;
+      ++service_state.closes;
+      c.x[0]=0; // Horizon ResultSuccess
+      return;
+    }
+    default:
+      throw std::runtime_error("Unsupported Horizon SVC: not implemented");
+  }
 }
 [[noreturn]] void unimpl(CPU&,uint64_t,const char*) {
   throw std::runtime_error("Untranslated ARM64 instruction");
@@ -95,15 +139,40 @@ Result run(){
   Result r;
   try {
     GuestMap mem;
-    svc_calls=0;
+
+    service_state={};
     r.got_first=invoke(7);
     r.expected_first=expected(7,1);
     r.got_second=invoke(19);
     r.expected_second=expected(19,2);
     r.final_guest_counter=mem.counter();
-    r.service_calls=svc_calls;
+    r.service_calls=service_state.calls;
+    r.horizon_connects=service_state.connects;
+    r.horizon_closes=service_state.closes;
+    r.handles_alive=service_state.handle_open?1:0;
+
+    // Negative contract tests: bad port, invalid handle and unknown SVC.
+    nx::CPU bad_port{};
+    bad_port.x[1]=NX_BASE+homebrew_fixture::kBssOffset;
+    nx::svc(bad_port,0x1f,0);
+    if(bad_port.x[0]==0)throw std::runtime_error("Bad service name accepted");
+    nx::CPU invalid_handle{};
+    invalid_handle.x[0]=0xDEADBEEF;
+    nx::svc(invalid_handle,0x16,0);
+    if(invalid_handle.x[0]==0)throw std::runtime_error("Unknown handle accepted");
+    try {
+      nx::CPU unsupported{};
+      nx::svc(unsupported,0x21,0); // NO IPC yet; must refuse to fake it.
+      throw std::runtime_error("Unimplemented IPC SVC was silently accepted");
+    } catch(const std::runtime_error& e) {
+      if(std::strcmp(e.what(),"Unsupported Horizon SVC: not implemented")!=0)
+        throw;
+    }
+    r.rejected_calls=service_state.rejected;
     r.ok=r.got_first==r.expected_first&&r.got_second==r.expected_second&&
-         r.final_guest_counter==2&&r.service_calls==2;
+         r.final_guest_counter==2&&r.service_calls==2&&
+         r.horizon_connects==2&&r.horizon_closes==2&&
+         r.handles_alive==0&&r.rejected_calls==2;
     if(!r.ok)r.diagnostic="ARM64 guest result differs from native C reference";
   } catch(const std::exception& e) {
     r.ok=false;

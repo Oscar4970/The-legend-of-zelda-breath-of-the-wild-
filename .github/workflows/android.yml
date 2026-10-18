@@ -134,7 +134,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: BOTW-Android-NativePortFoundation-v023-NOT-PLAYABLE
+          name: BOTW-Android-HorizonSVC-v024-NOT-PLAYABLE
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

@@ -191,7 +191,7 @@ public final class MainActivity extends Activity {
         });
         body.addView(recompTest);
         Button programTest = new Button(this);
-        programTest.setText("Probar PROGRAMA C ARM64 RECOMPILADO (funciones, memoria y servicios)");
+        programTest.setText("Probar SVC REALES de Switch en C recompilado (sm: abrir/cerrar)");
         programTest.setOnClickListener(v -> {
             programTest.setEnabled(false);
             try {
