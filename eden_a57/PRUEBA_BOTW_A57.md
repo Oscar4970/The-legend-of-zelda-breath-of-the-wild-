@@ -58,3 +58,22 @@
 El benchmark de Zelda **no puede realizarse ahora** porque no hay una copia legítima disponible y **no se ha ejecutado BOTW** en el Galaxy A57. Compilar un APK de Eden solamente significa disponer de una plataforma de pruebas, no que BOTW cargue o mantenga 30 FPS.
 
 Un APK adaptado solo puede considerarse mejor que Eden stock si los datos de comparación en el **mismo dispositivo y misma revisión del emulador** muestran menos fallos o mejores tiempos de frame sin regresiones. El perfil por sí solo no constituye una optimización demostrada.
+
+
+## Prueba v4 tras el primer gameplay (~10 FPS)
+
+1. Conservar copia de los archivos de guardado; no limpiar datos de Eden ni
+   borrar cachés innecesariamente. No sobrescribir apps con otra firma sin
+   haber respaldado los datos previamente.
+2. Confirmar que los relojes emulados CPU y GPU están en **Normal** y que
+   la resolución es 0.5x o 0.25x en portátil.
+3. Mantener **FSR 1 y frame generation desactivados** mientras el juego no se
+   sostenga al menos un intervalo medible; filtro bilineal para línea base.
+4. Repetir desde el mismo punto (santuario inicial / tableta Sheikah),
+   anotar FPS mínimo/medio, duración hasta cierre y si vuelve al menú.
+5. Guardar registros de Eden y `adb logcat` si es posible. Buscar
+   `VK_ERROR_DEVICE_LOST`, `OutOfMemoryError`, `SIGSEGV` o `lowmemorykiller`.
+   No compartir rutas privadas, claves, ROM o firmware.
+6. Solo con una base estable comparar FSR 1 y, por separado, la generación
+   de fotogramas experimental. No confundir fotogramas interpolados con FPS
+   reales de emulación.

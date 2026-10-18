@@ -99,7 +99,12 @@ class GalaxyA57PatchTests(unittest.TestCase):
                        "restorePrevious", "RENDERER_ASYNCHRONOUS_SHADERS",
                        "RENDERER_USE_DISK_SHADER_CACHE", "CPU_BACKEND.setInt(1)",
                        "ANDROID_PIPELINE_WORKERS.setInt(2)", "MEMORY_LAYOUT.setInt(0)",
-                       "MEMORY_V2_KEY", "savePreV2Settings"]:
+                       "MEMORY_V2_KEY", "savePreV2Settings",
+                       "PERFORMANCE_V4_KEY", "applySafeStartupV4",
+                       "FAST_CPU_TIME.setInt(0)", "FAST_GPU_TIME.setInt(0)",
+                       "RENDERER_FORCE_MAX_CLOCK.setBoolean(false)",
+                       "RENDERER_ACCURACY.setInt(0)", "RENDERER_FRAME_GEN.setBoolean(false)",
+                       "minOf(IntSetting.RENDERER_RESOLUTION.getInt(), 1)"]:
             self.assertIn(phrase, p)
         for danger in ["sudo", "setprop", "su -c", "GPU_DRIVER_OVERRIDE", "TurnipDriver"]:
             self.assertNotIn(danger, p)

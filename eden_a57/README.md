@@ -87,3 +87,32 @@ inicial. No hay medicion de FPS ni prueba de ejecucion real certificada.
 ## v3 - Limite nativo de shaders en Xclipse 550
 
 Eden ya trae 2 trabajadores por defecto en Android: esa parte de v2 era preventiva y por si sola normalmente no cambiaba el rendimiento. El parche nativo v3 establece **un solo trabajador de compilacion Vulkan** cuando el nombre real de la GPU contiene Xclipse 550. Otras GPU conservan el comportamiento original. Compilar mas lentamente puede reducir el pico de recursos, pero aun se necesita probar BOTW, Vulkan y RAM para verificar su estabilidad.
+
+
+## v4 — estabilidad y FPS reales antes que interpolación (18 octubre 2026)
+
+Informe del usuario: BOTW Switch llega a controlar a Link, aproximadamente
+10 FPS, con resolución reducida y relojes emulados modificados. Se cierra el
+juego y vuelve a Eden; todavía no tenemos `logcat` para saber por qué.
+
+**Cambios activos solo en SM-A576***: primera apertura de v4 activa el
+perfil de rendimiento una vez, incluso para usuarios de v1/v2/v3:
+- Máximo 0.5x de resolución interna portátil (no aumenta 0.25x elegida por el usuario)
+- NCE; GPU accuracy Low; CPU accuracy Auto
+- Valores normales de reloj **emulado** CPU/GPU, sin max-clock forzado
+- Vulkan, VRAM conservadora, memoria emulada 4 GiB, caché de shaders en disco
+- Shaders/GPU asíncronos, filtro bilineal económico y sin frame generation
+- Registra un único snapshot informativo de RAM libre al iniciar la app
+
+El parche nativo v3 de un solo trabajador Vulkan en Xclipse 550 se mantiene.
+El filtro **FSR 1** ya está en Eden y puede seleccionarse desde ajustes
+(escalado FSR, valor 6). No es FSR 3 ni AFMF, no genera fotogramas, y
+consume recursos adicionales respecto al filtro bilineal. Los algoritmos
+`frame_gen` de Eden no están validados en el Galaxy A57. Con unos 10 FPS
+reales la interpolación 2x no haría que la lógica del juego corriera a 20 FPS.
+
+No se ha comprobado que esta versión mejore FPS ni resuelva el cierre.
+Se requiere prueba A/B frente a v3, sin overclock ni cambios múltiples.
+Si la GPU muestra defectos con GPU accuracy Low, cambiar High manualmente.
+Los controles modificados son internos de Eden; no se toca Samsung PayJoy,
+Android, firmware, kernels ni controladores propietarios.

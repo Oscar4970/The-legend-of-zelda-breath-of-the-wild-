@@ -6,6 +6,8 @@
 package org.yuzu.yuzu_emu.utils
 
 import android.content.Context
+import android.app.ActivityManager
+import android.util.Log
 import android.os.Build
 import java.util.Locale
 import org.yuzu.yuzu_emu.features.settings.model.BooleanSetting
@@ -30,6 +32,59 @@ object GalaxyA57Preset {
     private const val PREF_NAME = "galaxy_a57_eden_experiment"
     private const val APPLIED_KEY = "profile_v1_applied"
     private const val MEMORY_V2_KEY = "profile_v2_low_memory_applied"
+    private const val PERFORMANCE_V4_KEY = "profile_v4_safe_startup_applied"
+
+    /**
+     * BOTW field report: game reaches Link at roughly 10 FPS but exits to Eden.
+     * Prioritize reduced pixel work and conservative emulation timing over
+     * interpolation. Save previous choices; apply once, never per launch.
+     *
+     * FSR1 is already present in Eden (ScalingFilter.Fsr = 6); users can select
+     * it manually after game stability has been measured. FSR1 != FSR3 frame gen.
+     */
+    private fun applySafeStartupV4(context: Context, prefs: android.content.SharedPreferences) {
+        if (prefs.getBoolean(PERFORMANCE_V4_KEY, false)) return
+        prefs.edit()
+            .putInt("old_v4_cpu_accuracy", IntSetting.CPU_ACCURACY.getInt())
+            .putInt("old_v4_gpu_accuracy", IntSetting.RENDERER_ACCURACY.getInt())
+            .putInt("old_v4_cpu_clock", IntSetting.FAST_CPU_TIME.getInt())
+            .putInt("old_v4_gpu_clock", IntSetting.FAST_GPU_TIME.getInt())
+            .putBoolean("old_v4_force_clock", BooleanSetting.RENDERER_FORCE_MAX_CLOCK.getBoolean())
+            .apply()
+
+        // Do not raise resolution if the user already chose 0.25x or 0.5x.
+        IntSetting.RENDERER_RESOLUTION.setInt(
+            minOf(IntSetting.RENDERER_RESOLUTION.getInt(), 1)
+        ) // <= 0.5x handheld
+        IntSetting.CPU_BACKEND.setInt(1)              // NCE
+        IntSetting.CPU_ACCURACY.setInt(0)             // Auto, not unsafe
+        IntSetting.RENDERER_ACCURACY.setInt(0)        // Low GPU accuracy; check visual artifacts
+        IntSetting.FAST_CPU_TIME.setInt(0)            // Normal emulated CPU clock
+        IntSetting.FAST_GPU_TIME.setInt(0)            // Normal emulated GPU clock
+        IntSetting.RENDERER_BACKEND.setInt(1)         // Vulkan
+        IntSetting.RENDERER_VRAM_USAGE_MODE.setInt(0) // Conservative
+        IntSetting.MEMORY_LAYOUT.setInt(0)            // Switch 4 GiB
+        IntSetting.RENDERER_SCALING_FILTER.setInt(1)  // Bilinear: cheaper than FSR1
+        IntSetting.RENDERER_ANTI_ALIASING.setInt(0)
+        BooleanSetting.USE_DOCKED_MODE.setBoolean(false)
+        BooleanSetting.RENDERER_FORCE_MAX_CLOCK.setBoolean(false)
+        BooleanSetting.RENDERER_USE_DISK_SHADER_CACHE.setBoolean(true)
+        BooleanSetting.RENDERER_ASYNCHRONOUS_SHADERS.setBoolean(true)
+        BooleanSetting.RENDERER_ASYNCHRONOUS_GPU_EMULATION.setBoolean(true)
+        BooleanSetting.RENDERER_FRAME_GEN.setBoolean(false)
+
+        NativeConfig.saveGlobalConfig()
+        prefs.edit().putBoolean(PERFORMANCE_V4_KEY, true).apply()
+
+        // Read-only Android memory snapshot for later diagnostic comparison.
+        val memoryManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        memoryManager?.let {
+            val info = ActivityManager.MemoryInfo()
+            it.getMemoryInfo(info)
+            Log.i("EdenA57Profile", "v4 freeRAMMiB=${info.availMem / 1048576L} " +
+                "lowMemory=${info.lowMemory} thresholdMiB=${info.threshold / 1048576L}")
+        }
+    }
 
     // Use Eden's existing configuration to limit GPU shader compilation pressure.
     private fun applyLowMemorySettings() {
@@ -58,7 +113,11 @@ object GalaxyA57Preset {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         // Do not touch a per-game configuration.
         if (NativeConfig.isPerGameConfigLoaded()) return
-        if (prefs.getBoolean(MEMORY_V2_KEY, false)) return
+        if (prefs.getBoolean(PERFORMANCE_V4_KEY, false)) return
+        if (prefs.getBoolean(MEMORY_V2_KEY, false)) {
+            applySafeStartupV4(context, prefs)
+            return
+        }
 
         // Previous v1 installations retain their other customized preferences.
         if (prefs.getBoolean(APPLIED_KEY, false)) {
@@ -66,6 +125,7 @@ object GalaxyA57Preset {
             applyLowMemorySettings()
             NativeConfig.saveGlobalConfig()
             prefs.edit().putBoolean(MEMORY_V2_KEY, true).apply()
+            applySafeStartupV4(context, prefs)
             return
         }
         savePreV2Settings(prefs)
@@ -106,6 +166,7 @@ object GalaxyA57Preset {
             .putBoolean(APPLIED_KEY, true)
             .putBoolean(MEMORY_V2_KEY, true)
             .apply()
+        applySafeStartupV4(context, prefs)
     }
 
     /**
@@ -138,8 +199,20 @@ object GalaxyA57Preset {
         if (prefs.contains("old_memory")) {
             IntSetting.MEMORY_LAYOUT.setInt(prefs.getInt("old_memory", 0))
         }
+        if (prefs.contains("old_v4_cpu_accuracy")) {
+            IntSetting.CPU_ACCURACY.setInt(prefs.getInt("old_v4_cpu_accuracy", 0))
+            IntSetting.RENDERER_ACCURACY.setInt(prefs.getInt("old_v4_gpu_accuracy", 0))
+            IntSetting.FAST_CPU_TIME.setInt(prefs.getInt("old_v4_cpu_clock", 0))
+            IntSetting.FAST_GPU_TIME.setInt(prefs.getInt("old_v4_gpu_clock", 0))
+            BooleanSetting.RENDERER_FORCE_MAX_CLOCK.setBoolean(
+                prefs.getBoolean("old_v4_force_clock", false))
+        }
         NativeConfig.saveGlobalConfig()
-        prefs.edit().remove(APPLIED_KEY).remove(MEMORY_V2_KEY).apply()
+        prefs.edit()
+            .remove(APPLIED_KEY)
+            .remove(MEMORY_V2_KEY)
+            .remove(PERFORMANCE_V4_KEY)
+            .apply()
         return true
     }
 }
