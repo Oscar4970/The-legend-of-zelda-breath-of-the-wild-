@@ -7,6 +7,7 @@ on:
       - '.github/workflows/eden-a57-build.yml'
       - 'eden_a57/GalaxyA57Preset.kt'
       - 'eden_a57/apply_to_eden.py'
+      - 'tests/eden_a57_patch_test.py'
 
 permissions:
   contents: read
