@@ -49,7 +49,7 @@ class KitError(Exception):
 
 
 def git_blob_sha1(data: bytes) -> str:
-    payload = b"blob " + str(len(data)).encode("ascii") + b"\\0" + data
+    payload = b"blob " + str(len(data)).encode("ascii") + b"\0" + data
     return hashlib.sha1(payload).hexdigest()
 
 
@@ -110,7 +110,7 @@ def make_kit(eden_root: Path, output: Path) -> int:
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as z:
         z.writestr("LEEME_PRIMERO.txt", KIT_NOTE)
-        z.writestr("manifest.json", json.dumps(data, indent=2, ensure_ascii=False) + "\\n")
+        z.writestr("manifest.json", json.dumps(data, indent=2, ensure_ascii=False) + "\n")
         for name, payload in staged:
             z.writestr(name, payload)
     print(f"KIT VERIFICADO: {output} ({len(data['files'])} archivos de referencia)")
