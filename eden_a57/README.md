@@ -116,3 +116,28 @@ Se requiere prueba A/B frente a v3, sin overclock ni cambios múltiples.
 Si la GPU muestra defectos con GPU accuracy Low, cambiar High manualmente.
 Los controles modificados son internos de Eden; no se toca Samsung PayJoy,
 Android, firmware, kernels ni controladores propietarios.
+
+
+## v5 — rollback de la regresión en carga de partidas (2026-10-18)
+
+La v4 regresó de "Link camina unos segundos, ~10 FPS" a "no carga
+la partida". Fue incorrecto modificar de una sola vez precisión y relojes
+emulados, junto con otros ajustes, antes de tener un registro del cierre.
+
+- Para instalaciones que ya ejecutaron v4, v5 **restaura exactamente una
+  vez** los valores guardados de CPU accuracy, GPU accuracy, reloj CPU
+  emulado, reloj GPU emulado y "force max clock". Esto permite volver a
+  comparar con el estado previo de la v4. Los valores de relojes son
+  **del emulador**, no overclock del SoC físico Samsung.
+- No eleva ni fuerza la resolución: v4 no guardó su valor anterior y
+  aumentarla sin preguntar podría interferir con las pruebas.
+- Para nuevas instalaciones, utiliza la configuración inicial v3/v2.
+- Conserva el parche Vulkan de v3 y el control de memoria de v2.
+- No toca partidas, cachés, controladores, firmware, ni Android.
+- No incorpora FSR 3 ni activa generación de fotogramas.
+- Esta compilación **NO demuestra** mejora de FPS o corrección del cierre.
+  Hace falta log real al fallar y test A/B en el dispositivo.
+
+Nota: el registro `eden_log.txt.old.txt` recibido anteriormente terminaba
+a 1.5 segundos de inicio y no incluía el fallo, por lo que no sustenta una
+hipótesis precisa sobre la causa raíz del cierre del juego.

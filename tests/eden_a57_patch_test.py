@@ -100,12 +100,18 @@ class GalaxyA57PatchTests(unittest.TestCase):
                        "RENDERER_USE_DISK_SHADER_CACHE", "CPU_BACKEND.setInt(1)",
                        "ANDROID_PIPELINE_WORKERS.setInt(2)", "MEMORY_LAYOUT.setInt(0)",
                        "MEMORY_V2_KEY", "savePreV2Settings",
-                       "PERFORMANCE_V4_KEY", "applySafeStartupV4",
-                       "FAST_CPU_TIME.setInt(0)", "FAST_GPU_TIME.setInt(0)",
-                       "RENDERER_FORCE_MAX_CLOCK.setBoolean(false)",
-                       "RENDERER_ACCURACY.setInt(0)", "RENDERER_FRAME_GEN.setBoolean(false)",
-                       "minOf(", "IntSetting.RENDERER_RESOLUTION.getInt(), 1"]:
+                       "PERFORMANCE_V4_KEY", "RECOVER_V5_KEY",
+                       "rollbackV4IfNeeded(prefs)",
+                       "old_v4_cpu_accuracy", "old_v4_gpu_accuracy",
+                       "old_v4_cpu_clock", "old_v4_gpu_clock",
+                       "old_v4_force_clock", "NativeConfig.saveGlobalConfig()"]:
             self.assertIn(phrase, p)
+        # Regression guard: v5 must not re-apply the v4 clock override or
+        # force a resolution on an existing installation.
+        for regression in ["applySafeStartupV4", "FAST_GPU_TIME.setInt(0)",
+                           "FAST_CPU_TIME.setInt(0)", "RENDERER_RESOLUTION.setInt(\n",
+                           "RENDERER_FRAME_GEN.setBoolean(true)"]:
+            self.assertNotIn(regression, p)
         for danger in ["sudo", "setprop", "su -c", "GPU_DRIVER_OVERRIDE", "TurnipDriver"]:
             self.assertNotIn(danger, p)
 
