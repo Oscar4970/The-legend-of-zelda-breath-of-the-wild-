@@ -272,7 +272,7 @@ inline std::string inspect(int fd) {
 
     if(std::memcmp(head.data(),"PFS0",4)==0) {
         out<<"Formato: NSP / PFS0\n\n";
-        const auto dir=parseDirectory(fd,0,fileSize,false);
+        const auto dir=parseDirectory(fd,0,fileSize,fileSize,false);
         if(!dir.ok)return error("NSP: "+dir.error);
         listDirectory(fd,dir,totals,out,"Indice del paquete");
         out<<summarize(totals);
@@ -284,7 +284,7 @@ inline std::string inspect(int fd) {
            <<"; cabecera HFS0 indicada de "<<rootSize<<" bytes.\n";
         if(!within(root,16,fileSize) || rootSize<16 || !within(root,rootSize,fileSize))
             return error("XCI: datos de posicion de particion raiz invalidos.");
-        const auto rootDir=parseDirectory(fd,root,fileSize-root,true);
+        const auto rootDir=parseDirectory(fd,root,fileSize-root,fileSize,true);
         if(!rootDir.ok)return error("XCI: raiz HFS0 invalida: "+rootDir.error);
         if(rootSize<16+rootDir.entries.size()*64)
             return error("XCI: tamano de cabecera raiz incompatible con el indice.");
@@ -296,7 +296,7 @@ inline std::string inspect(int fd) {
             if(partition.bytes<16){
                 out<<"    Particion vacia/incompleta.\n";continue;
             }
-            const auto nested=parseDirectory(fd,partition.absolute,partition.bytes,true);
+            const auto nested=parseDirectory(fd,partition.absolute,partition.bytes,fileSize,true);
             if(!nested.ok){
                 out<<"    HFS0 no legible: "<<nested.error<<"\n";
                 continue;
