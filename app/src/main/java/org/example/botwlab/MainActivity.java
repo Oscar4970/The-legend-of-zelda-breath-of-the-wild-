@@ -23,6 +23,7 @@ public final class MainActivity extends Activity {
     private static native String nativeTriangleGpuCheck();
     private static native String nativeRunRecompiledArm64();
     private static native String nativeRunCompiledHomebrew();
+    private static native String nativeInspectSwitchContainer(int fd);
     private static native String nativeInspectNso(int fd);
     private static native String nativeReconstructNso(int fd);
     private static native String nativeRunSyntheticArm64();
@@ -172,6 +173,15 @@ public final class MainActivity extends Activity {
             }
         });
         body.addView(programTest);
+        Button romInspector = new Button(this);
+        romInspector.setText("INSPECCIONAR ARCHIVO NSP/XCI LOCAL (SOLO INDICE, NO EJECUTA)");
+        romInspector.setOnClickListener(v -> {
+            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            pick.addCategory(Intent.CATEGORY_OPENABLE);
+            pick.setType("*/*");
+            startActivityForResult(pick,79);
+        });
+        body.addView(romInspector);
         Button select = new Button(this);
         select.setText("Analizar NSO de Switch (solo metadatos)");
         select.setOnClickListener(v -> {
@@ -258,6 +268,26 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 79) {
+            if(resultCode != RESULT_OK || data == null || data.getData() == null) return;
+            final Uri selected=data.getData();
+            scanResult.setText("Inspeccionando solo cabecera e indice del contenedor...\n"
+                    +"No se cargara el juego completo ni se enviara a internet.");
+            new Thread(() -> {
+                String result;
+                try (ParcelFileDescriptor fd=getContentResolver().openFileDescriptor(selected,"r")) {
+                    if(fd == null) throw new IllegalStateException("No se pudo abrir el archivo.");
+                    System.loadLibrary("botwgpu");
+                    result=nativeInspectSwitchContainer(fd.getFd());
+                } catch (Throwable error) {
+                    result="Error leyendo archivo NSP/XCI: "+error.getClass().getSimpleName()
+                            +": "+String.valueOf(error.getMessage());
+                }
+                final String value=result;
+                runOnUiThread(() -> scanResult.setText(value));
+            },"NspXciMetadataOnly").start();
+            return;
+        }
         if ((requestCode != REQUEST_NSO && requestCode != 74 && requestCode != 75 && requestCode != 76 && requestCode != 77 && requestCode != 78) || resultCode != RESULT_OK || data == null) return;
         Uri uri = data.getData();
         if (uri == null) return;

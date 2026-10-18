@@ -183,3 +183,12 @@ Siguiente paso cuando exista el archivo: identificar formato, versión e inventa
 Para comprobarlo, usar el botón **«Probar PROGRAMA C ARM64 RECOMPILADO (funciones, memoria y servicios)»**, y compartir el resultado. El paso de empaquetado usa `recomp_aot/package_homebrew_nso.py`; `homebrew.nso` **no es un juego ni un homebrew comercial/autónomo de Switch**, es un contenedor de prueba para el recompilador. La SVC 0x7e **no es un servicio real Horizon**, sino un hook sintético que permite ensayar la integración. La etapa posterior es un homebrew creado con un toolchain Switch y llamadas a **Horizon auténticas**.
 
 **NO se ha ejecutado Zelda** ni existe todavía una runtime completa que lo soporte. La fuente, recompilado, scripts y licencia MIT del código reutilizado son auditables; no hay ROMs ni archivos de Nintendo. Las comprobaciones de CI se ejecutan primero en host; la ejecución específica en el Galaxy A57 se confirmará cuando el usuario pruebe el botón.
+
+
+## v0.20 — Inspeccionar un NSP/XCI de hasta decenas de gigabytes **directamente en Android**
+
+La función **«INSPECCIONAR ARCHIVO NSP/XCI LOCAL (SOLO INDICE, NO EJECUTA)»** utiliza el selector Android `ACTION_OPEN_DOCUMENT` y lee mediante `pread` **solo la cabecera PFS0 y la tabla de archivos**, acotadas a un máximo de 20 000 entradas / 8 MiB de tabla de nombres (hasta ~8.5 MiB en total). Para XCI detecta la firma `HEAD` en el offset `0x100`. La tarea se ejecuta fuera del hilo principal para evitar bloquear la interfaz.
+
+El usuario puede seleccionar un archivo grande desde Downloads y obtener cantidad de NCAs y coherencia básica del índice sin cargar, copiar, extraer, descifrar ni subir el juego; se respeta el límite natural del acceso a archivos del proveedor. No garantiza autenticidad, integridad, versión ni identificación real de Breath of the Wild. No se cargan recursos ni se ejecuta el juego.
+
+Las pruebas de límites y ficheros sintéticos ejecutan el inspector de C++ en GitHub Actions. La ejecución concreta en el Galaxy A57 se confirma con captura de pantalla del usuario. Mantener NSP/XCI privados y no subirlos al repositorio público.

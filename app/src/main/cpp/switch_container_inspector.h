@@ -54,7 +54,7 @@ inline std::string inspect(int fd) {
     uint64_t entriesBytes=uint64_t(count)*24;
     uint64_t dataStart=16+entriesBytes+length;
     if(dataStart>size)return fail("PFS0 truncado.");
-    std::vector<unsigned char> entries(size_t(entriesBytes)),names(length);
+    std::vector<unsigned char> entries(static_cast<size_t>(entriesBytes)),names(length);
     if(!readAt(fd,entries.data(),entries.size(),16) ||
        !readAt(fd,names.data(),names.size(),16+entriesBytes))
         return fail("No se pudo leer el indice PFS0.");

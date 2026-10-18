@@ -20,10 +20,10 @@ struct Temp {
     }
 };
 void w32(std::vector<unsigned char>& x,size_t p,uint32_t v) {
-    for(int i=0;i<4;i++)x[p+i]=unsigned char((v>>(8*i))&255);
+    for(int i=0;i<4;i++)x[p+i]=static_cast<unsigned char>((v>>(8*i))&255);
 }
 void w64(std::vector<unsigned char>& x,size_t p,uint64_t v) {
-    for(int i=0;i<8;i++)x[p+i]=unsigned char((v>>(8*i))&255);
+    for(int i=0;i<8;i++)x[p+i]=static_cast<unsigned char>((v>>(8*i))&255);
 }
 int main(){
     Temp f;
