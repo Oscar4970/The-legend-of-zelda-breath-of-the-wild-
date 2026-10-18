@@ -7,6 +7,7 @@ This AOT builder does not guarantee compatible Horizon/NVN/Maxwell shaders.
 """
 from __future__ import annotations
 import argparse
+import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -74,14 +75,18 @@ def configure_game(engine: Path, romfs: Path | None) -> Path:
         (private/item).mkdir(parents=True,exist_ok=True)
     if romfs:
         target=private/"extract"/"romfs"
-        if target.is_symlink():
-            target.unlink()
-        elif target.exists():
-            raise PortBuildError("Do not overwrite an existing RomFS directory: "+str(target))
-        if os.name=="nt":
-            run("cmd","/c","mklink","/J",target,romfs.resolve())
+        # Do not repeat symlink/junction creation on subsequent runs.
+        if target.exists() and target.resolve()==romfs.resolve():
+            pass
         else:
-            target.symlink_to(romfs.resolve(),target_is_directory=True)
+            if target.is_symlink():
+                target.unlink()
+            elif target.exists():
+                raise PortBuildError("Do not overwrite an existing RomFS directory: "+str(target))
+            if os.name=="nt":
+                run("cmd","/c","mklink","/J",target,romfs.resolve())
+            else:
+                target.symlink_to(romfs.resolve(),target_is_directory=True)
     return private
 
 def aot_game(engine: Path, private: Path, main: Path, sdk: Path) -> None:
@@ -89,15 +94,29 @@ def aot_game(engine: Path, private: Path, main: Path, sdk: Path) -> None:
             ("main",main,"0x4000000000"),
             ("sdk",sdk,"0x4010000000")):
         output=private/"gen"/name
+        report=output/"report.txt"
+        binary=private/"analysis"/(name+".bin")
+        cache=output/".source.sha256"
+        digest=hashlib.sha256()
+        with source.open("rb") as f:
+            for block in iter(lambda:f.read(4*1024*1024),b""):
+                digest.update(block)
+        fingerprint=PIN+":"+base+":"+digest.hexdigest()
+        if (cache.is_file() and cache.read_text()==fingerprint
+                and report.is_file() and binary.is_file()
+                and (output/"funcs.h").is_file()
+                and (output/"table.cpp").is_file()
+                and list(output.glob("code_*.cpp"))):
+            print("Unchanged",name,"NSO; reusing AOT output instead of repeating work.")
+            continue
         print("Full ARM64 -> C++ of actual local NSO",name,flush=True)
         run(sys.executable,"-m","recomp",source,output,
             "--name",name,"--base",base,cwd=engine)
-        report=output/"report.txt"
         if not report.is_file():
             raise PortBuildError("No AOT coverage report for "+name)
         print(report.read_text(encoding="utf-8",errors="replace")[:500])
-        run(sys.executable,engine/"tools"/"nso2bin.py",
-            source,private/"analysis"/(name+".bin"))
+        run(sys.executable,engine/"tools"/"nso2bin.py",source,binary)
+        cache.write_text(fingerprint,encoding="ascii")
     print("Code generated. This does NOT demonstrate BOTW boots.")
 
 def build_native(engine: Path, private: Path, sdk: Path, jobs: int) -> None:
