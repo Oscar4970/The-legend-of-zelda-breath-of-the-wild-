@@ -30,6 +30,16 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p botw_port_builder_test.py -v
           python3 port_botw/build_port.py --help > /tmp/botw-port-usage.txt
+      - name: Validate local-only NCA header bridge (synthetic NSP, synthetic AES XTS)
+        run: |
+          mkdir -p /tmp/nca-bridge-java
+          javac -d /tmp/nca-bridge-java \
+            app/src/main/java/org/example/botwlab/SwitchNcaHeaderBridge.java \
+            tests/java/org/example/botwlab/SwitchNcaHeaderBridgeTest.java
+          java -cp /tmp/nca-bridge-java org.example.botwlab.SwitchNcaHeaderBridgeTest
+          g++ -std=c++20 -O2 -Wall -Wextra -Werror \
+            tests/switch_nca_bridge_test.cpp -o /tmp/switch_nca_bridge_test
+          /tmp/switch_nca_bridge_test
       - name: Deep Switch ROM inspector tests (synthetic NSP XCI NSO NRO only)
         run: |
           g++ -std=c++20 -Wall -Wextra -Werror -O2 \

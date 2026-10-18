@@ -14,10 +14,14 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import java.io.File;
+import java.io.InputStream;
 import java.util.zip.ZipFile;
 
 public final class MainActivity extends Activity {
     private static final int REQUEST_NSO = 73;
+    private static final int REQUEST_NCA_BRIDGE_NSP = 81;
+    private static final int REQUEST_NCA_BRIDGE_KEYS = 82;
+    private Uri bridgeNspUri;
     // No Nintendo-derived game library is distributed in this repository.
     private boolean hasPrivateGameAndData() {
         boolean hasLibrary;
@@ -41,6 +45,7 @@ public final class MainActivity extends Activity {
     private static native String nativeRunCompiledHomebrew();
     private static native String nativeInspectSwitchContainer(int fd);
     private static native String nativeAnalyzeSwitchDeep(int fd);
+    private static native byte[][] nativeNcaHeaderSamples(int fd);
     private static native String nativeInspectNso(int fd);
     private static native String nativeReconstructNso(int fd);
     private static native String nativeRunSyntheticArm64();
@@ -214,6 +219,20 @@ public final class MainActivity extends Activity {
             startActivityForResult(pick,79);
         });
         body.addView(romInspector);
+        Button ncaBridge = new Button(this);
+        ncaBridge.setText("PUENTE EDEN: comprobar NSP + prod.keys local (cabeceras NCA)");
+        ncaBridge.setOnClickListener(v -> {
+            bridgeNspUri = null;
+            shareRomReport.setEnabled(false);
+            lastRomReport = "";
+            scanResult.setText("1/2: selecciona el NSP. Después elegirás prod.keys localmente. "
+                + "No se guardan claves ni se envían a ningún servidor.");
+            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            pick.addCategory(Intent.CATEGORY_OPENABLE);
+            pick.setType("*/*");
+            startActivityForResult(pick, REQUEST_NCA_BRIDGE_NSP);
+        });
+        body.addView(ncaBridge);
         shareRomReport = new Button(this);
         shareRomReport.setText("COMPARTIR INFORME DE ANALISIS (solo texto)");
         shareRomReport.setEnabled(false);
@@ -311,6 +330,53 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_NCA_BRIDGE_NSP) {
+            if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
+            bridgeNspUri = data.getData();
+            scanResult.setText("2/2: elige tu prod.keys local. No lo incluiremos en el APK "
+                + "ni se almacenará ni enviará a Internet.");
+            Intent choose = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            choose.addCategory(Intent.CATEGORY_OPENABLE);
+            choose.setType("*/*");
+            startActivityForResult(choose, REQUEST_NCA_BRIDGE_KEYS);
+            return;
+        }
+        if (requestCode == REQUEST_NCA_BRIDGE_KEYS) {
+            if (bridgeNspUri == null || resultCode != RESULT_OK ||
+                data == null || data.getData() == null) return;
+            final Uri nsp = bridgeNspUri;
+            bridgeNspUri = null;
+            final Uri keyFile = data.getData();
+            scanResult.setText("Comprobando cabeceras NCA localmente; sin extraer el juego...");
+            new Thread(() -> {
+                String report;
+                try (ParcelFileDescriptor nspFd =
+                         getContentResolver().openFileDescriptor(nsp, "r");
+                     InputStream keys = getContentResolver().openInputStream(keyFile)) {
+                    if (nspFd == null || keys == null)
+                        throw new java.io.IOException("No se pudo abrir alguno de los archivos.");
+                    System.loadLibrary("botwgpu");
+                    byte[][] samples = nativeNcaHeaderSamples(nspFd.getFd());
+                    report = SwitchNcaHeaderBridge.inspect(keys, samples);
+                    // Ciphertext samples contain no secret key, but discard transient buffers.
+                    for (byte[] sample : samples)
+                        java.util.Arrays.fill(sample, (byte)0);
+                } catch (Exception | LinkageError error) {
+                    // Avoid accidentally showing full file paths or key bytes in reports.
+                    report = "PUENTE NCA: comprobación no completada ("
+                        + error.getClass().getSimpleName() + "). "
+                        + "Revisa que seleccionaste un NSP y un archivo local con header_key. "
+                        + "No se modificó el juego ni se exportaron claves.";
+                }
+                final String value = report;
+                runOnUiThread(() -> {
+                    scanResult.setText(value);
+                    lastRomReport = value; // Metadata only, never private key bytes.
+                    shareRomReport.setEnabled(true);
+                });
+            }, "BotwPrivateNcaHeaderProbe").start();
+            return;
+        }
         if (requestCode == 79) {
             if(resultCode != RESULT_OK || data == null || data.getData() == null) return;
             final Uri selected=data.getData();
