@@ -1,4 +1,4 @@
-name: Eden Galaxy A57 v2 low-memory APK (NO GAMES)
+name: Eden Galaxy A57 v3 shader-safe APK (NO GAMES)
 
 on:
   workflow_dispatch:
@@ -75,7 +75,7 @@ jobs:
           python3 -m unittest discover -s tests -p eden_a57_patch_test.py -v
           python3 eden_a57/apply_to_eden.py /tmp/eden
           git -C /tmp/eden diff --check
-          git -C /tmp/eden diff -- src/android/app/src/main/java/org/yuzu/yuzu_emu/YuzuApplication.kt src/video_core/vulkan_common/vulkan_device.cpp > /tmp/device-changes.patch
+          git -C /tmp/eden diff -- src/android/app/src/main/java/org/yuzu/yuzu_emu/YuzuApplication.kt src/video_core/vulkan_common/vulkan_device.cpp src/video_core/renderer_vulkan/vk_pipeline_cache.cpp > /tmp/device-changes.patch
       - name: Build complete Eden Android APK for Galaxy A57
         run: |
           cd /tmp/eden/src/android
@@ -105,14 +105,14 @@ jobs:
               "https://github.com/Oscar4970/The-legend-of-zelda-breath-of-the-wild-/tree/main/eden_a57. "
               "No ROM, keys, firmware or game assets included.\n", encoding="utf-8")
           import shutil
-          shutil.copy2(good[0],out/"Eden_Galaxy_A57_Xclipse550_LOW_MEMORY_v2.apk")
-          print("Verified APK",out/"Eden_Galaxy_A57_Xclipse550_LOW_MEMORY_v2.apk")
+          shutil.copy2(good[0],out/"Eden_Galaxy_A57_Xclipse550_SHADER_SAFE_v3.apk")
+          print("Verified APK",out/"Eden_Galaxy_A57_Xclipse550_SHADER_SAFE_v3.apk")
           PY
           cp /tmp/device-changes.patch eden_a57_artifacts/eden-a57-changes.patch
       - name: Upload experimental GPL-compatible Android build (no game data)
         uses: actions/upload-artifact@v4
         with:
-          name: Eden-A57-Xclipse550-LOW-MEMORY-V2-NO-GAME
+          name: Eden-A57-Xclipse550-SHADER-SAFE-V3-NO-GAME
           path: eden_a57_artifacts/
           retention-days: 7
           if-no-files-found: error

@@ -16,6 +16,7 @@ EDEN_KT = "src/android/app/src/main/java/org/yuzu/yuzu_emu"
 APP = EDEN_KT + "/YuzuApplication.kt"
 DEST = EDEN_KT + "/utils/GalaxyA57Preset.kt"
 VULKAN = "src/video_core/vulkan_common/vulkan_device.cpp"
+PIPELINE = "src/video_core/renderer_vulkan/vk_pipeline_cache.cpp"
 
 IMPORT_MARKER = "import org.yuzu.yuzu_emu.utils.GpuDriverHelper\n"
 IMPORT_NEW = "import org.yuzu.yuzu_emu.utils.GalaxyA57Preset\n"
@@ -40,6 +41,14 @@ NATIVE_SNIPPET = r'''    // Galaxy A57: instrumentation of the real Samsung Vulk
     }
 '''
 
+# Android default is already 2 Vulkan pipeline builders. One worker on Xclipse
+# 550 lowers parallel shader/pipeline work only on this GPU.
+PIPELINE_ANCHOR = "      workers(device.HasBrokenParallelShaderCompiling() ? 1ULL : GetTotalPipelineWorkers(),\n"
+PIPELINE_ONE_WORKER = """      workers((device.HasBrokenParallelShaderCompiling() ||
+               device.GetModelName().find("Xclipse 550") != std::string_view::npos)
+                  ? 1ULL : GetTotalPipelineWorkers(),
+"""
+
 
 def patch_file(path: Path, anchor: str, addition: str, *, before: bool = False):
     original = path.read_text(encoding="utf-8")
@@ -59,13 +68,17 @@ def main():
     root = a.eden_root.resolve()
     app = root / APP
     vulkan = root / VULKAN
+    pipeline = root / PIPELINE
     dest = root / DEST
-    for path in (app, vulkan):
+    for path in (app, vulkan, pipeline):
         if not path.is_file():
             raise SystemExit(f"Not an expected Eden Android checkout: missing {path}")
     # Make compatibility errors fail BEFORE modifying source files.
     app_data = app.read_text(encoding="utf-8")
     vk_data = vulkan.read_text(encoding="utf-8")
+    pipeline_data = pipeline.read_text(encoding="utf-8")
+    if PIPELINE_ONE_WORKER not in pipeline_data and pipeline_data.count(PIPELINE_ANCHOR) != 1:
+        raise SystemExit("Upstream Eden pipeline code changed: refusing unsafe patch")
     for source, needle in ((app_data, IMPORT_MARKER), (app_data, START_MARKER),
                            (vk_data, NATIVE_ANCHOR)):
         if source.count(needle) != 1:
@@ -79,9 +92,14 @@ def main():
     patch_file(vulkan, NATIVE_ANCHOR, NATIVE_SNIPPET, before=True)
     if "#include <string_view>" not in vulkan.read_text(encoding="utf-8"):
         patch_file(vulkan, "#include <optional>\n", "#include <string_view>\n")
+    if PIPELINE_ONE_WORKER not in pipeline_data:
+        pipeline.write_text(pipeline_data.replace(PIPELINE_ANCHOR, PIPELINE_ONE_WORKER),
+                            encoding="utf-8")
+    if "#include <string_view>" not in pipeline.read_text(encoding="utf-8"):
+        patch_file(pipeline, "#include <span>\n", "#include <string_view>\n")
     print("Source patch staged for Eden. NO APK BUILT. Review 'git diff', build with")
     print("Eden's Android Gradle/NDK pipeline, then validate on the Galaxy A57.")
-    print("Rollback: git restore --", APP, VULKAN)
+    print("Rollback: git restore --", APP, VULKAN, PIPELINE)
     print("and remove", DEST)
 
 

@@ -82,3 +82,8 @@ Esta version migra el perfil anterior v1 (solo los dos ajustes nuevos), mantiene
 la resolucion y preferencias personalizadas y guarda los dos valores anteriores
 para restauracion. Menor concurrencia puede aumentar los tiempos de compilacion
 inicial. No hay medicion de FPS ni prueba de ejecucion real certificada.
+
+
+## v3 - Limite nativo de shaders en Xclipse 550
+
+Eden ya trae 2 trabajadores por defecto en Android: esa parte de v2 era preventiva y por si sola normalmente no cambiaba el rendimiento. El parche nativo v3 establece **un solo trabajador de compilacion Vulkan** cuando el nombre real de la GPU contiene Xclipse 550. Otras GPU conservan el comportamiento original. Compilar mas lentamente puede reducir el pico de recursos, pero aun se necesita probar BOTW, Vulkan y RAM para verificar su estabilidad.

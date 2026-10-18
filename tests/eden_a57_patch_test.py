@@ -11,6 +11,7 @@ PATCH_SCRIPT = ROOT / "eden_a57" / "apply_to_eden.py"
 VULKAN = "src/video_core/vulkan_common/vulkan_device.cpp"
 APP = "src/android/app/src/main/java/org/yuzu/yuzu_emu/YuzuApplication.kt"
 DEST = "src/android/app/src/main/java/org/yuzu/yuzu_emu/utils/GalaxyA57Preset.kt"
+PIPELINE = "src/video_core/renderer_vulkan/vk_pipeline_cache.cpp"
 
 
 def make_stub(root: Path, *, intact=True) -> None:
@@ -28,6 +29,12 @@ def make_stub(root: Path, *, intact=True) -> None:
         "namespace Vulkan {\n"
         "    CollectPhysicalMemoryInfo();\n"
         "}\n", encoding="utf-8")
+    p = root / PIPELINE
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(
+        "#include <span>\n"
+        "      workers(device.HasBrokenParallelShaderCompiling() ? 1ULL : GetTotalPipelineWorkers(),\n",
+        encoding="utf-8")
 
 
 def run_patch(root: Path):
@@ -49,6 +56,9 @@ class GalaxyA57PatchTests(unittest.TestCase):
             self.assertIn("GalaxyA57Preset", profile)
             self.assertIn('deviceName}.find("Xclipse 550")', vk)
             self.assertIn("#include <string_view>", vk)
+            pipe = (root / PIPELINE).read_text()
+            self.assertIn('device.GetModelName().find("Xclipse 550")', pipe)
+            self.assertIn("#include <string_view>", pipe)
             self.assertIn("Restore", (ROOT / "eden_a57" / "README.md").read_text() + "Restore")
 
     def test_is_idempotent(self):
@@ -56,10 +66,10 @@ class GalaxyA57PatchTests(unittest.TestCase):
             root = Path(tmp)
             make_stub(root)
             self.assertEqual(run_patch(root).returncode, 0)
-            initial = [(root / p).read_bytes() for p in [APP, VULKAN, DEST]]
+            initial = [(root / p).read_bytes() for p in [APP, VULKAN, PIPELINE, DEST]]
             second = run_patch(root)
             self.assertEqual(second.returncode, 0, second.stderr)
-            self.assertEqual(initial, [(root / p).read_bytes() for p in [APP, VULKAN, DEST]])
+            self.assertEqual(initial, [(root / p).read_bytes() for p in [APP, VULKAN, PIPELINE, DEST]])
 
     def test_fail_closed_on_unrecognized_eden_version(self):
         with tempfile.TemporaryDirectory() as tmp:
