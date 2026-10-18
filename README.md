@@ -192,3 +192,19 @@ La función **«INSPECCIONAR ARCHIVO NSP/XCI LOCAL (SOLO INDICE, NO EJECUTA)»**
 El usuario puede seleccionar un archivo grande desde Downloads y obtener cantidad de NCAs y coherencia básica del índice sin cargar, copiar, extraer, descifrar ni subir el juego; se respeta el límite natural del acceso a archivos del proveedor. No garantiza autenticidad, integridad, versión ni identificación real de Breath of the Wild. No se cargan recursos ni se ejecuta el juego.
 
 Las pruebas de límites y ficheros sintéticos ejecutan el inspector de C++ en GitHub Actions. La ejecución concreta en el Galaxy A57 se confirma con captura de pantalla del usuario. Mantener NSP/XCI privados y no subirlos al repositorio público.
+
+## v0.21 — Explorador profundo de ROM en Android (NSP / XCI / NSO / NRO)
+
+El APK incorpora **«ANALIZAR ROM A FONDO»**, que permite elegir un archivo local en Android, **sin leer todo el archivo a RAM**. La aplicación identifica el formato y produce un informe de texto compartible mediante el botón **«COMPARTIR INFORME DE ANALISIS (solo texto)»**. Compartir requiere elegir una app externa; no existe subida automática de ROMs ni de informes. El texto puede incluir nombres de archivos y títulos de programas, por lo que el usuario debe revisarlo antes de enviarlo.
+
+**NSP:** valida la estructura PFS0, tamaños y offsets, enumera los primeros 28 archivos y resume todos los restantes. Clasifica NCAs, tickets, certificados y archivos auxiliares; lee únicamente el campo de cabecera pública de cada NCA si fuera visible, sin claves ni extracción. La ausencia de la firma NCA3 normalmente indica una cabecera cifrada, pero no prueba por sí sola la integridad ni autenticidad del contenido. Con una cabecera NCA sin cifrar puede reconocer su tipo Program/Meta/Control y su ProgramId, pero no descifra el contenido ni supone que se pueda recompilar.
+
+**XCI:** además de reconocer `HEAD`, ahora lee el offset HFS0 raíz y, cuando sus índices son coherentes, abre **en solo lectura** los índices HFS0 de las particiones `secure`, `normal`, `update` y `logo`, enumerando las NCA contenidas. No verifica firmas RSA ni hashes de partición.
+
+**NSO0 sin cifrar:** presenta el mapa de memoria ARM64 (`.text/.rodata/.data/BSS`) y compresión. Para archivos de hasta 16 MiB, reutiliza la reconstrucción aislada de memoria y el inspector MOD0 existente para identificar símbolos/importaciones/bibliotecas y reubicaciones REL/RELA/RELR. Verifica únicamente hashes SHA-256 que la cabecera solicite. No ejecuta instrucciones ni desensambla todo el código; que el archivo sea un NSO0 no implica que el recompilador pueda manejarlo.
+
+**NRO0 homebrew:** para archivos de hasta 16 MiB, reutiliza el lector NRO y sus metadatos MOD0 para detallar secciones y el número de importaciones, donde estén disponibles.
+
+La interfaz indica explícitamente **qué puede analizarse** y **qué sigue bloqueado** por cifrado o APIs de Switch faltantes. Tests en CI con datos completamente sintéticos cubren NSP, XCI/HFS0 anidado, NCA ilegible y legible, ejecutable NSO/NRO y cabeceras malformadas. Diseño basado en [Switchbrew XCI](https://switchbrew.org/wiki/XCI), [NCA](https://switchbrew.org/wiki/NCA) y [NSO0](https://switchbrew.org/wiki/NSO0).
+
+**No incluye el juego, ni lo ejecuta, ni convierte una ROM automáticamente en APK jugable.** Las ROMs protegidas se trabajan solo si proceden de copias legítimas y se manejan localmente.

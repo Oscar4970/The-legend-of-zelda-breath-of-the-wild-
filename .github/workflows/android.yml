@@ -26,6 +26,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Deep Switch ROM inspector tests (synthetic NSP XCI NSO NRO only)
+        run: |
+          g++ -std=c++20 -Wall -Wextra -Werror -O2 \
+            tests/switch_deep_analyzer_test.cpp -o /tmp/switch_deep_analyzer_test
+          /tmp/switch_deep_analyzer_test
       - name: Android NSP/XCI read-only inspector tests (synthetic fixtures)
         run: |
           g++ -std=c++20 -Wall -Wextra -Werror -O2 tests/switch_container_android_test.cpp -o /tmp/switch_container_android_test
@@ -125,7 +130,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: BOTW-Android-NSP-Inspector-v020-NOT-GAME
+          name: BOTW-Android-Deep-Rom-Explorer-v021-NOT-GAME
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

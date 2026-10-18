@@ -17,6 +17,8 @@ import android.widget.TextView;
 public final class MainActivity extends Activity {
     private static final int REQUEST_NSO = 73;
     private TextView scanResult;
+    private Button shareRomReport;
+    private String lastRomReport = "";
     private static native String nativeVulkanInfo();
     private static native String nativeVulkanRuntimeProbe();
     private static native String nativeOffscreenGpuCheck();
@@ -24,6 +26,7 @@ public final class MainActivity extends Activity {
     private static native String nativeRunRecompiledArm64();
     private static native String nativeRunCompiledHomebrew();
     private static native String nativeInspectSwitchContainer(int fd);
+    private static native String nativeAnalyzeSwitchDeep(int fd);
     private static native String nativeInspectNso(int fd);
     private static native String nativeReconstructNso(int fd);
     private static native String nativeRunSyntheticArm64();
@@ -41,11 +44,11 @@ public final class MainActivity extends Activity {
         body.setGravity(Gravity.CENTER_HORIZONTAL);
         body.setPadding(32, 40, 32, 32);
         TextView heading = new TextView(this);
-        heading.setText("BOTW Android — prueba de hardware");
+        heading.setText("BOTW Android — laboratorio y análisis de archivos");
         heading.setTextSize(24);
         body.addView(heading);
         TextView note = new TextView(this);
-        note.setText("ESTO NO ES EL JUEGO. Prueba gráficos y controles táctiles; no abre ROMs ni ejecuta Zelda.");
+        note.setText("ESTO NO ES EL JUEGO. Inspecciona ROMs de forma local y prueba componentes técnicos. No descifra ni ejecuta Zelda.");
         note.setPadding(0, 25, 0, 25);
         body.addView(note);
         TextView info = new TextView(this);
@@ -174,7 +177,7 @@ public final class MainActivity extends Activity {
         });
         body.addView(programTest);
         Button romInspector = new Button(this);
-        romInspector.setText("INSPECCIONAR ARCHIVO NSP/XCI LOCAL (SOLO INDICE, NO EJECUTA)");
+        romInspector.setText("ANALIZAR ROM A FONDO: NSP, XCI, NSO, NRO (solo lectura)");
         romInspector.setOnClickListener(v -> {
             Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             pick.addCategory(Intent.CATEGORY_OPENABLE);
@@ -182,6 +185,17 @@ public final class MainActivity extends Activity {
             startActivityForResult(pick,79);
         });
         body.addView(romInspector);
+        shareRomReport = new Button(this);
+        shareRomReport.setText("COMPARTIR INFORME DE ANALISIS (solo texto)");
+        shareRomReport.setEnabled(false);
+        shareRomReport.setOnClickListener(v -> {
+            if(lastRomReport.isEmpty()) return;
+            Intent send = new Intent(Intent.ACTION_SEND);
+            send.setType("text/plain");
+            send.putExtra(Intent.EXTRA_TEXT, lastRomReport);
+            startActivity(Intent.createChooser(send, "Compartir reporte de ROM"));
+        });
+        body.addView(shareRomReport);
         Button select = new Button(this);
         select.setText("Analizar NSO de Switch (solo metadatos)");
         select.setOnClickListener(v -> {
@@ -271,21 +285,25 @@ public final class MainActivity extends Activity {
         if (requestCode == 79) {
             if(resultCode != RESULT_OK || data == null || data.getData() == null) return;
             final Uri selected=data.getData();
-            scanResult.setText("Inspeccionando solo cabecera e indice del contenedor...\n"
+            scanResult.setText("Analizando estructura del contenedor, particiones y ejecutables visibles...\n"
                     +"No se cargara el juego completo ni se enviara a internet.");
             new Thread(() -> {
                 String result;
                 try (ParcelFileDescriptor fd=getContentResolver().openFileDescriptor(selected,"r")) {
                     if(fd == null) throw new IllegalStateException("No se pudo abrir el archivo.");
                     System.loadLibrary("botwgpu");
-                    result=nativeInspectSwitchContainer(fd.getFd());
+                    result=nativeAnalyzeSwitchDeep(fd.getFd());
                 } catch (Throwable error) {
                     result="Error leyendo archivo NSP/XCI: "+error.getClass().getSimpleName()
                             +": "+String.valueOf(error.getMessage());
                 }
                 final String value=result;
-                runOnUiThread(() -> scanResult.setText(value));
-            },"NspXciMetadataOnly").start();
+                runOnUiThread(() -> {
+                    scanResult.setText(value);
+                    lastRomReport = value;
+                    shareRomReport.setEnabled(true);
+                });
+            },"SwitchDeepRomAnalysis").start();
             return;
         }
         if ((requestCode != REQUEST_NSO && requestCode != 74 && requestCode != 75 && requestCode != 76 && requestCode != 77 && requestCode != 78) || resultCode != RESULT_OK || data == null) return;
