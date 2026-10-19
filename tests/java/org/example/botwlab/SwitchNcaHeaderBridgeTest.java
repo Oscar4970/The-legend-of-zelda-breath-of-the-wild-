@@ -26,7 +26,7 @@ public final class SwitchNcaHeaderBridgeTest {
         Cipher tweakAes = Cipher.getInstance("AES/ECB/NoPadding");
         aes.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, 0, 16, "AES"));
         tweakAes.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, 16, 16, "AES"));
-        for (int sector = 0; sector < 2; sector++) {
+        for (int sector = 0; sector < plain.length / 512; sector++) {
             byte[] iv = new byte[16];
             // Independent implementation of Nintendo's big-endian XTS data-unit IV.
             iv[15] = (byte)sector;
@@ -59,10 +59,27 @@ public final class SwitchNcaHeaderBridgeTest {
             new ByteArrayInputStream(named.getBytes(StandardCharsets.US_ASCII)));
         check(Arrays.equals(key, read), "read a fake header_key from local bytes");
         Arrays.fill(read, (byte)0);
-        byte[] plain = new byte[1024];
+        byte[] plain = new byte[0xC00];
         System.arraycopy("NCA3".getBytes(StandardCharsets.US_ASCII),0,plain,0x200,4);
         plain[0x205] = 0; // program
-        plain[0x208] = 0x00; plain[0x209] = 0x10; // 4096 bytes
+        plain[0x208] = 0x00; plain[0x209] = 0x40; // 16384 bytes
+        // Two synthetic program sections: one candidate ExeFS (PartitionFS)
+        // and one candidate RomFS. Sector windows: [6, 14), [14, 22).
+        plain[0x240] = 6;
+        plain[0x244] = 14;
+        plain[0x250] = 14;
+        plain[0x254] = 22;
+        plain[0x400+2] = 1; // PartitionFS
+        plain[0x400+3] = 2; // SHA256 type
+        plain[0x400+4] = 3; // AES-CTR
+        plain[0x600+2] = 0; // RomFS
+        plain[0x600+3] = 3; // Integrity hash type
+        plain[0x600+4] = 3; // AES-CTR
+        java.security.MessageDigest digester = java.security.MessageDigest.getInstance("SHA-256");
+        System.arraycopy(digester.digest(Arrays.copyOfRange(plain,0x400,0x600)),
+                         0,plain,0x280,32);
+        System.arraycopy(digester.digest(Arrays.copyOfRange(plain,0x600,0x800)),
+                         0,plain,0x2A0,32);
         byte[] title = {(byte)0x00,(byte)0xe0,(byte)0x11,(byte)0x00,
                         (byte)0xf0,(byte)0x7e,(byte)0x00,(byte)0x01};
         System.arraycopy(title,0,plain,0x210,8);
@@ -82,6 +99,21 @@ public final class SwitchNcaHeaderBridgeTest {
             new byte[][]{cipher});
         check(report.contains("Cabeceras NCA reconocidas: 1/1"), "NCA header counted");
         check(report.contains("NCA PROGRAM detectados: 1"), "program header counted");
+        check(report.contains("FS 0: PartitionFS"), "ExeFS-like section identified");
+        check(report.contains("FS 1: RomFS"), "RomFS-like section identified");
+        check(report.contains("CANDIDATO a ExeFS"), "conservative code-section label");
+        check(report.contains("CANDIDATO a RomFS"), "conservative data-section label");
+        check(report.contains("SHA-256 coincide"), "section header SHA-256 verified");
+        check(report.contains("Secciones de programa con cabecera SHA-256 consistente: 2"),
+              "both section headers verified");
+        byte[] corrupted = cipher.clone();
+        corrupted[0x400] ^= 1; // break FS header integrity without changing the NCA header
+        String damaged = SwitchNcaHeaderBridge.inspect(
+            new ByteArrayInputStream(named.getBytes(StandardCharsets.US_ASCII)),
+            new byte[][]{corrupted});
+        check(damaged.contains("hash SHA-256 no coincide") &&
+              !damaged.contains("CANDIDATO a ExeFS"), "reject tampered section metadata");
+        Arrays.fill(corrupted,(byte)0);
         check(report.contains("01007EF00011E000"), "title ID recognized");
         check(!report.contains(hex(key)), "must not display key material");
         check(!report.contains("ExeFS obtenido"), "must not misrepresent extraction");

@@ -19,7 +19,7 @@ static Bytes makeNsp(bool corrupt=false,bool shortNca=false) {
     const std::string name1="program.nca",name2="info.tik";
     const size_t names=name1.size()+1+name2.size()+1;
     const size_t first=16+24*2+names;
-    const size_t length=shortNca?16:0x400;
+    const size_t length=shortNca?16:0xC00;
     Bytes b(first+length+8,0);
     std::memcpy(b.data(),"PFS0",4);
     put32(b,4,2);
@@ -63,8 +63,8 @@ static void mustFail(const Bytes& b) {
 int main() {
     auto data=samples(makeNsp());
     assert(data.size()==1);
-    assert(data[0].size()==0x400);
-    for(size_t i=0;i<0x400;i++) assert(data[0][i]==i%256);
+    assert(data[0].size()==0xC00);
+    for(size_t i=0;i<0xC00;i++) assert(data[0][i]==i%256);
     mustFail(makeNsp(true,false));
     mustFail(makeNsp(false,true));
     mustFail(Bytes(100,0));

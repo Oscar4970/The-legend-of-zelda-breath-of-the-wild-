@@ -47,3 +47,21 @@ vector de prueba independiente de OpenSSL para el sector 1.
 La corrección no descifra ni exporta recursos y no implica aún que las claves
 del usuario sean correctas. La siguiente verificación debe ocurrir en el
 Galaxy A57 con su NSP y el archivo de claves **seleccionado localmente**.
+
+## Hito v0.27 — mapa de cabeceras de sistema de archivos (solo lectura)
+
+Después de la prueba real del Galaxy A57 (**4/4 NCA reconocidos; NCA PROGRAM
+con Title ID 01007EF00011E000**), el siguiente paso amplía la ventana de
+lectura por NCA de 0x400 a **0xC00 bytes**: el encabezado principal de 1 KiB y
+las cuatro cabeceras NCA de sistema de archivos de 512 B cada una.
+
+Se interpretan los cuatro pares de sectores (`fs_info` desde 0x240), las
+cabeceras `NcaFsHeader` (desde 0x400), sus tipos RomFS/PartitionFS, clases
+de cifrado y el **hash SHA-256 real de cada cabecera**, cuyo digest está en
+`fs_header_hash` desde 0x280. Solo se muestra un candidato a ExeFS cuando
+los sectores están dentro del tamaño declarado y el SHA-256 coincide.
+
+Esto NO descifra los datos de esas particiones ni demuestra que contengan
+`main` o `sdk`. No se guardan recursos del juego ni claves. Las pruebas
+CI construyen únicamente encabezados NCA y secciones sintéticas con claves
+inventadas, y comprueban rechazo de cabeceras alteradas.

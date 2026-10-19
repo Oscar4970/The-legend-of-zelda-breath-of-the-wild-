@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
+import java.security.MessageDigest;
 import java.util.Locale;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
@@ -11,13 +12,18 @@ import javax.crypto.spec.SecretKeySpec;
 /**
  * First local-only native-port bridge milestone.
  *
- * Accepts only 0x400-byte NCA ciphertext headers sampled from a local NSP;
+ * Accepts only 0xC00-byte NCA encrypted headers and section headers from a local NSP;
  * uses the user's selected local key stream transiently; returns metadata only.
  * It does NOT extract ExeFS/RomFS, export decrypted bytes, implement Horizon,
  * execute a commercial NSO, or turn BOTW into a native Android application.
  */
 public final class SwitchNcaHeaderBridge {
-    private static final int SAMPLE_SIZE = 0x400;
+    private static final int SAMPLE_SIZE = 0xC00;
+    private static final int MAIN_HEADER_SIZE = 0x400;
+    private static final int FS_HEADER_SIZE = 0x200;
+    private static final int FS_COUNT = 4;
+    private static final int FS_INFO_OFFSET = 0x240;
+    private static final int FS_HASH_OFFSET = 0x280;
     private static final int SECTOR_SIZE = 0x200;
     private static final int MAX_KEY_FILE = 128 * 1024;
     private static final int MAX_SAMPLES = 32;
@@ -154,6 +160,87 @@ public final class SwitchNcaHeaderBridge {
         }
     }
 
+    private static long le32(byte[] data, int offset) {
+        return ((long)data[offset] & 255L) |
+               (((long)data[offset+1] & 255L) << 8) |
+               (((long)data[offset+2] & 255L) << 16) |
+               (((long)data[offset+3] & 255L) << 24);
+    }
+
+    private static String fsTypeName(int fsType) {
+        return fsType == 0 ? "RomFS" : fsType == 1 ? "PartitionFS" : "desconocido";
+    }
+
+    private static String encryptionName(int value) {
+        switch (value) {
+            case 1: return "NONE";
+            case 2: return "AES-XTS";
+            case 3: return "AES-CTR";
+            case 4: return "AES-CTR-EX";
+            case 5: return "AES-CTR-SKIP-HASH";
+            case 6: return "AES-CTR-EX-SKIP-HASH";
+            default: return "no reconocido";
+        }
+    }
+
+    /**
+     * Section header is SHA-256 authenticated against its digest from the
+     * decrypted NCA header, not against a hardcoded pattern. The hash check
+     * proves internal metadata consistency; NOT Nintendo signature validity.
+     */
+    private static String inspectFsHeaders(byte[] decrypted, int ncaIndex, int contentType,
+                                           long declaredSize) throws GeneralSecurityException {
+        StringBuilder out = new StringBuilder();
+        MessageDigest sha = MessageDigest.getInstance("SHA-256");
+        int verifiedCount = 0;
+        for (int slot = 0; slot < FS_COUNT; slot++) {
+            int info = FS_INFO_OFFSET + slot * 16;
+            long firstSector = le32(decrypted, info);
+            long lastSector = le32(decrypted, info + 4);
+            if (firstSector == 0 && lastSector == 0) continue;
+            // Limits are strictly bounded by the file size declared in NCA.
+            long startByte = firstSector * 512L;
+            long endByte = lastSector * 512L;
+            if (firstSector == 0 || lastSector <= firstSector ||
+                declaredSize < SAMPLE_SIZE || endByte > declaredSize) {
+                out.append("  FS ").append(slot).append(": sectores fuera de límites; ignorados.\n");
+                continue;
+            }
+            int offset = MAIN_HEADER_SIZE + slot * FS_HEADER_SIZE;
+            int hashOffset = FS_HASH_OFFSET + slot * 32;
+            sha.reset();
+            sha.update(decrypted, offset, FS_HEADER_SIZE);
+            byte[] actualHash = sha.digest();
+            byte[] expectedHash = Arrays.copyOfRange(decrypted, hashOffset, hashOffset + 32);
+            boolean matches = MessageDigest.isEqual(actualHash, expectedHash);
+            Arrays.fill(actualHash, (byte)0);
+            Arrays.fill(expectedHash, (byte)0);
+            if (!matches) {
+                out.append("  FS ").append(slot)
+                    .append(": hash SHA-256 no coincide; metadatos no fiables.\n");
+                continue;
+            }
+            verifiedCount++;
+            int fsType = decrypted[offset + 2] & 255;
+            int hashType = decrypted[offset + 3] & 255;
+            int encryptionType = decrypted[offset + 4] & 255;
+            out.append("  FS ").append(slot)
+               .append(": ").append(fsTypeName(fsType))
+               .append(" / cifrado ").append(encryptionName(encryptionType))
+               .append(" / hash tipo ").append(hashType)
+               .append(" / ").append(endByte - startByte).append(" bytes")
+               .append(" / SHA-256 coincide\n");
+            if (contentType == 0 && fsType == 1)
+                out.append("    CANDIDATO a ExeFS (aun sin leer archivos main/sdk).\n");
+            if (contentType == 0 && fsType == 0)
+                out.append("    CANDIDATO a RomFS (aun sin leer recursos).\n");
+        }
+        if (contentType == 0)
+            out.append("  Secciones de programa con cabecera SHA-256 consistente: ")
+               .append(verifiedCount).append('\n');
+        return out.toString();
+    }
+
     private static long le64(byte[] data, int offset) {
         long result = 0;
         for (int i = 7; i >= 0; i--) result = (result << 8) | (data[offset + i] & 0xffL);
@@ -180,7 +267,7 @@ public final class SwitchNcaHeaderBridge {
                         (decrypted[0x203] == '3' || decrypted[0x203] == '2');
                     int type = decrypted[0x205] & 0xff;
                     long declaredSize = le64(decrypted, 0x208);
-                    if (validMagic && type <= 5 && declaredSize >= 0x400) {
+                    if (validMagic && type <= 5 && declaredSize >= SAMPLE_SIZE) {
                         recognized++;
                         if (type == 0) programs++;
                         String category = type == 0 ? "PROGRAM" : type == 1 ? "META"
@@ -191,6 +278,8 @@ public final class SwitchNcaHeaderBridge {
                             .append(category).append(" / Title ID ")
                             .append(String.format(Locale.ROOT, "%016X", le64(decrypted, 0x210)))
                             .append('\n');
+                        if (type == 0)
+                            output.append(inspectFsHeaders(decrypted, index, type, declaredSize));
                     } else {
                         output.append("NCA ").append(index + 1)
                             .append(": cabecera no reconocida; llave/variante desconocida.\n");
@@ -211,7 +300,7 @@ public final class SwitchNcaHeaderBridge {
             output.append("No se identificó programa; esto NO prueba que el NSP esté dañado.\n");
         output.append("NO se extrae ExeFS/RomFS; no ejecuta Zelda ni genera port nativo.\n");
         output.append("Claves transitorias, no incluidas en APK, reporte ni almacenamiento.\n");
-        output.append("No se cargó el NSP completo en RAM; solo muestras de 1 KiB.");
+        output.append("No se cargó el NSP completo en RAM; solo muestras NCA de 3 KiB.");
         return output.toString();
     }
 }

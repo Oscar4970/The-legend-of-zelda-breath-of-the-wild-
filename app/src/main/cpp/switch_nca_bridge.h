@@ -1,5 +1,5 @@
 // Bridge milestone: bounded samples for *local* NCA header inspection.
-// This copies only 0x400 ciphertext bytes per NCA, with no key handling.
+// This copies only 0xC00 ciphertext bytes per NCA, with no key handling.
 // A user-provided key stream stays in Java during a local-only check.
 #pragma once
 #include "switch_deep_analyzer.h"
@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 
 namespace ncabridge {
-constexpr size_t kHeaderBytes = 0x400;
+constexpr size_t kHeaderBytes = 0xC00;
 constexpr size_t kMaxNcaSamples = 32;
 using Header = std::array<unsigned char, kHeaderBytes>;
 
