@@ -212,6 +212,12 @@ public final class SwitchMountedExeFsBridgeTest {
             "checks both modules' decoded SHA-256 values");
         assertThat(report.split("Segmentos verificados: 3/3", -1).length==3,
             "both main and sdk have three verified LZ4/raw sections");
+        assertThat(report.contains("main: Imagen NSO temporal construida y verificada") &&
+                   report.contains("sdk: Imagen NSO temporal construida y verificada"),
+            "both modules mapped into temporary nonexecutable memory");
+        assertThat(report.contains("BSS 32 bytes") &&
+                   report.contains("no se aplicaron relocaciones ni se ejecuto codigo"),
+            "BSS and explicit non-execution noted in read-only report");
 
         assertThat(report.contains("main: cabecera NSO0 estructuralmente coherente"),
             "validates main segment layout from mounted encrypted NSP");
