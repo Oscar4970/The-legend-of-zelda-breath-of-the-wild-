@@ -23,6 +23,7 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_NCA_BRIDGE_KEYS = 82;
     private static final int REQUEST_FIRMWARE_BRIDGE_ZIP = 83;
     private static final int REQUEST_FIRMWARE_BRIDGE_KEYS = 84;
+    private static final int REQUEST_RUNTIME_VFS_NSP = 85;
     private Uri firmwareBridgeZipUri;
     private Uri bridgeNspUri;
     // No Nintendo-derived game library is distributed in this repository.
@@ -49,6 +50,9 @@ public final class MainActivity extends Activity {
     private static native String nativeInspectSwitchContainer(int fd);
     private static native String nativeAnalyzeSwitchDeep(int fd);
     private static native byte[][] nativeNcaHeaderSamples(int fd);
+    private static native String nativeMountNspVfs(int fd);
+    private static native String nativeProbeNspVfs();
+    private static native void nativeUnmountNspVfs();
     private static native String nativeInspectNso(int fd);
     private static native String nativeReconstructNso(int fd);
     private static native String nativeRunSyntheticArm64();
@@ -250,6 +254,28 @@ public final class MainActivity extends Activity {
             startActivityForResult(pick, REQUEST_FIRMWARE_BRIDGE_ZIP);
         });
         body.addView(firmwareBridge);
+        Button vfsMount = new Button(this);
+        vfsMount.setText("RUNTIME: MONTAR NSP SIN EXTRAER (LECTURA VIRTUAL)");
+        vfsMount.setOnClickListener(v -> {
+            scanResult.setText("Selecciona el NSP original. Se abrirá un montaje de solo lectura.");
+            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            pick.addCategory(Intent.CATEGORY_OPENABLE);
+            pick.setType("*/*");
+            startActivityForResult(pick, REQUEST_RUNTIME_VFS_NSP);
+        });
+        body.addView(vfsMount);
+        Button vfsUnmount = new Button(this);
+        vfsUnmount.setText("RUNTIME: DESMONTAR NSP");
+        vfsUnmount.setOnClickListener(v -> {
+            try {
+                System.loadLibrary("botwgpu");
+                nativeUnmountNspVfs();
+                scanResult.setText("Montaje NSP cerrado; Eden no se modificó.");
+            } catch (Exception | LinkageError error) {
+                scanResult.setText("Error al desmontar: " + error.getClass().getSimpleName());
+            }
+        });
+        body.addView(vfsUnmount);
         shareRomReport = new Button(this);
         shareRomReport.setText("COMPARTIR INFORME DE ANALISIS (solo texto)");
         shareRomReport.setEnabled(false);
@@ -347,6 +373,35 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_RUNTIME_VFS_NSP) {
+            if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
+            final Uri picked = data.getData();
+            scanResult.setText("Montando NSP para lecturas virtuales bajo demanda...");
+            new Thread(() -> {
+                String result;
+                try (ParcelFileDescriptor fd = getContentResolver().openFileDescriptor(picked, "r")) {
+                    if (fd == null) throw new java.io.IOException("El NSP no está disponible");
+                    System.loadLibrary("botwgpu");
+                    result = nativeMountNspVfs(fd.getFd());
+                } catch (Exception | LinkageError error) {
+                    result = "No se pudo montar NSP: " + error.getClass().getSimpleName();
+                }
+                if (result.startsWith("RUNTIME VFS / NSP MONTADO")) {
+                    try {
+                        result += "\n" + nativeProbeNspVfs();
+                    } catch (Exception | LinkageError error) {
+                        result += "\nNo se completó la prueba de lecturas virtuales.";
+                    }
+                }
+                final String report = result;
+                runOnUiThread(() -> {
+                    scanResult.setText(report);
+                    lastRomReport = report;
+                    shareRomReport.setEnabled(true);
+                });
+            }, "BotwRuntimeVfsMount").start();
+            return;
+        }
         if (requestCode == REQUEST_FIRMWARE_BRIDGE_ZIP) {
             if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
             firmwareBridgeZipUri = data.getData();
