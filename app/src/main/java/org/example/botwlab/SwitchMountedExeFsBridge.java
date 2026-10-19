@@ -215,6 +215,32 @@ public final class SwitchMountedExeFsBridge {
                                                                             });
                                                                     output.append(label).append(": ")
                                                                         .append(hashes.report).append('\n');
+                                                                    if(hashes.ok) {
+                                                                        try (SwitchNsoMemoryImage image =
+                                                                             SwitchNsoMemoryImage.prepare(
+                                                                                 nsoHeader,file.size,
+                                                                                 (offset,count) -> {
+                                                                                     if(offset<0 || count<0 ||
+                                                                                        offset>file.size ||
+                                                                                        count>file.size-offset)
+                                                                                         throw new IOException(
+                                                                                             "Modulo NSO fuera de limites");
+                                                                                     try {
+                                                                                         return readPartition(
+                                                                                             reader,name,
+                                                                                             moduleOffset+offset,
+                                                                                             count,sectionKey,upperIv,
+                                                                                             encryption);
+                                                                                     } catch (GeneralSecurityException e) {
+                                                                                         throw new IOException(
+                                                                                             "Fallo de lectura cifrada");
+                                                                                     }
+                                                                                 })) {
+                                                                            output.append(label).append(": ")
+                                                                                .append(image.summary())
+                                                                                .append('\n');
+                                                                        }
+                                                                    }
                                                                 } catch (IOException |
                                                                          java.security.NoSuchAlgorithmException e) {
                                                                     output.append(label)
