@@ -42,6 +42,11 @@ jobs:
             app/src/main/java/org/example/botwlab/SwitchFirmwareBridge.java \
             tests/java/org/example/botwlab/SwitchFirmwareBridgeTest.java
           java -cp /tmp/nca-bridge-java org.example.botwlab.SwitchFirmwareBridgeTest
+          javac -d /tmp/nca-bridge-java \
+            app/src/main/java/org/example/botwlab/SwitchNcaHeaderBridge.java \
+            app/src/main/java/org/example/botwlab/SwitchMountedExeFsBridge.java \
+            tests/java/org/example/botwlab/SwitchMountedExeFsBridgeTest.java
+          java -cp /tmp/nca-bridge-java org.example.botwlab.SwitchMountedExeFsBridgeTest
           g++ -std=c++20 -O2 -Wall -Wextra -Werror \
             tests/switch_nca_bridge_test.cpp -o /tmp/switch_nca_bridge_test
           /tmp/switch_nca_bridge_test
