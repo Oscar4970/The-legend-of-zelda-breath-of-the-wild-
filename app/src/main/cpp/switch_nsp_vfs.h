@@ -67,6 +67,17 @@ public:
         return lookup(name).bytes;
     }
 
+    [[nodiscard]] std::vector<std::string> entryNames() const {
+        std::vector<std::string> result;
+        result.reserve(entries_.size());
+        for (const auto& entry : entries_) {
+            if (switchdeep::suffix(entry.name, ".nca") ||
+                switchdeep::suffix(entry.name, ".tik"))
+                result.push_back(entry.name);
+        }
+        return result;
+    }
+
     // A future runtime can request any bounded slice on demand. The returned
     // bytes are RAW (the NCA remains encrypted). This does not load the NSP in RAM.
     void read(std::string_view name, uint64_t relativeOffset, void* dest, size_t bytes) const {
