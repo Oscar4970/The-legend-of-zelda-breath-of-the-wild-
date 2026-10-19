@@ -54,37 +54,46 @@ final class SwitchNsoSectionHashes {
     }
 
     static void decodeLz4(byte[] compressed, byte[] output) throws IOException {
-        if (compressed == null || output == null)
-            throw new IOException("LZ4: faltan buffers");
-        int in = 0, out = 0;
-        while (in < compressed.length) {
-            int token = compressed[in++] & 255;
-            int[] cursor = {in};
-            int literal = length(compressed, cursor, token >>> 4);
-            in = cursor[0];
-            if (literal > compressed.length-in || literal > output.length-out)
-                throw new IOException("LZ4: literales fuera de limite");
-            System.arraycopy(compressed, in, output, out, literal);
-            in += literal;
-            out += literal;
-            if (in == compressed.length) break;
-            if (in + 2 > compressed.length)
-                throw new IOException("LZ4: desplazamiento incompleto");
-            int distance = (compressed[in] & 255) | ((compressed[in+1] & 255) << 8);
-            in += 2;
-            if (distance == 0 || distance > out)
-                throw new IOException("LZ4: desplazamiento invalido");
-            cursor[0] = in;
-            int repeat = length(compressed, cursor, token & 15);
-            in = cursor[0];
-            if (repeat > output.length-out-4)
-                throw new IOException("LZ4: repeticion fuera de limite");
-            repeat += 4;
-            for (int i=0; i<repeat; i++) output[out+i] = output[out+i-distance];
-            out += repeat;
+        decodeLz4(compressed, output, 0, output.length);
+    }
+
+    /** Write a raw LZ4 block into an exact slice of a larger mapped module. */
+    static void decodeLz4(byte[] compressed, byte[] output,
+                          int targetOffset, int expectedLength) throws IOException {
+        if (compressed==null || output==null || targetOffset<0 ||
+            expectedLength<0 || targetOffset>output.length ||
+            expectedLength>output.length-targetOffset)
+            throw new IOException("LZ4: rango de salida invalido");
+        int in=0, out=0;
+        while(in<compressed.length) {
+            int token=compressed[in++]&255;
+            int[] cursor={in};
+            int literal=length(compressed,cursor,token>>>4);
+            in=cursor[0];
+            if (literal>compressed.length-in || literal>expectedLength-out)
+                throw new IOException("LZ4: literales fuera del segmento");
+            System.arraycopy(compressed,in,output,targetOffset+out,literal);
+            in+=literal;
+            out+=literal;
+            if(in==compressed.length)break;
+            if(in+2>compressed.length)
+                throw new IOException("LZ4: desplazamiento truncado");
+            int distance=(compressed[in]&255)|((compressed[in+1]&255)<<8);
+            in+=2;
+            if(distance==0||distance>out)
+                throw new IOException("LZ4: referencia invalida");
+            cursor[0]=in;
+            int repeat=length(compressed,cursor,token&15);
+            in=cursor[0];
+            if (expectedLength-out<4 || repeat>expectedLength-out-4)
+                throw new IOException("LZ4: repeticion excede segmento");
+            repeat+=4;
+            for(int j=0;j<repeat;j++)
+                output[targetOffset+out+j]=output[targetOffset+out+j-distance];
+            out+=repeat;
         }
-        if (in != compressed.length || out != output.length)
-            throw new IOException("LZ4: longitud resultante incorrecta");
+        if (in!=compressed.length || out!=expectedLength)
+            throw new IOException("LZ4: tamano descomprimido incorrecto");
     }
 
     private static void load(Source source, long start, byte[] output) throws IOException {
