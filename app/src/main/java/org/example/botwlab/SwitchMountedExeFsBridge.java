@@ -187,6 +187,43 @@ public final class SwitchMountedExeFsBridge {
                                                                     nsoHeader,file.size);
                                                             output.append(label).append(": ")
                                                                 .append(info.report).append('\n');
+                                                            if (info.valid) {
+                                                                try {
+                                                                    SwitchNsoSectionHashes.Result hashes =
+                                                                        SwitchNsoSectionHashes.verify(
+                                                                            nsoHeader,file.size,
+                                                                            new SwitchNsoSectionHashes.Source() {
+                                                                                @Override public byte[] read(
+                                                                                      long offset,int count)
+                                                                                      throws IOException {
+                                                                                    if(offset<0 || count<0 ||
+                                                                                        offset>file.size ||
+                                                                                        count>file.size-offset)
+                                                                                        throw new IOException(
+                                                                                            "Segmento fuera de ExeFS");
+                                                                                    try {
+                                                                                        return readPartition(
+                                                                                            reader,name,
+                                                                                            moduleOffset+offset,count,
+                                                                                            sectionKey,upperIv,
+                                                                                            encryption);
+                                                                                    } catch (GeneralSecurityException e) {
+                                                                                        throw new IOException(
+                                                                                            "No se pudo descifrar una pagina");
+                                                                                    }
+                                                                                }
+                                                                            });
+                                                                    output.append(label).append(": ")
+                                                                        .append(hashes.report).append('\n');
+                                                                } catch (IOException |
+                                                                         java.security.NoSuchAlgorithmException e) {
+                                                                    output.append(label)
+                                                                        .append(": verificación de segmentos ")
+                                                                        .append("incompleta (")
+                                                                        .append(e.getClass().getSimpleName())
+                                                                        .append("); no se ejecutó código.\n");
+                                                                }
+                                                            }
                                                         } finally {
                                                             Arrays.fill(nsoHeader,(byte)0);
                                                         }
