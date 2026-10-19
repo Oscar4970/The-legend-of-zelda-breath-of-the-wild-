@@ -128,15 +128,25 @@ public final class SwitchMountedExeFsBridgeTest {
         put32(partition,4,2);
         put32(partition,8,9); // "main\0sdk\0"
         put64(partition,16,0);
-        put64(partition,24,0x100);
+        put64(partition,24,0x200);
         put32(partition,32,0);
-        put64(partition,40,0x100);
-        put64(partition,48,0x100);
+        put64(partition,40,0x200);
+        put64(partition,48,0x200);
         put32(partition,56,5);
         System.arraycopy("main\0sdk\0".getBytes(StandardCharsets.US_ASCII),0,partition,64,9);
         int dataStart=16+2*24+9;
-        System.arraycopy("NSO0".getBytes(StandardCharsets.US_ASCII),0,partition,dataStart,4);
-        System.arraycopy("NSO0".getBytes(StandardCharsets.US_ASCII),0,partition,dataStart+0x100,4);
+        for (int moduleBase : new int[]{dataStart,dataStart+0x200}) {
+            System.arraycopy("NSO0".getBytes(StandardCharsets.US_ASCII),
+                0,partition,moduleBase,4);
+            // One valid synthetic .text section at NSO offset 0x100,
+            // within this 512-byte module; all other sections empty.
+            put32(partition,moduleBase+0x10,0x100);
+            put32(partition,moduleBase+0x14,0);
+            put32(partition,moduleBase+0x18,16);
+            put32(partition,moduleBase+0x60,16);
+            put32(partition,moduleBase+0x3c,32);
+            for (int i=0;i<16;i++)partition[moduleBase+0x100+i]=(byte)(0x50+i);
+        }
         byte[] encryptedPart=ctrCrypt(partition,contentKey,upper,0xE00);
         System.arraycopy(encryptedPart,0,nca,0xE00,encryptedPart.length);
 
@@ -172,6 +182,10 @@ public final class SwitchMountedExeFsBridgeTest {
         assertThat(report.contains("main: firma NSO0 válida"),"main header via CTR");
         assertThat(report.contains("sdk: firma NSO0 válida"),"sdk header via CTR");
         assertThat(report.contains("Módulos NSO0 detectados: 2"),"two synthetic NSO headers");
+        assertThat(report.contains("main: cabecera NSO0 estructuralmente coherente"),
+            "validates main segment layout from mounted encrypted NSP");
+        assertThat(report.contains("sdk: cabecera NSO0 estructuralmente coherente"),
+            "validates sdk segment layout from mounted encrypted NSP");
         assertThat(!report.contains(hex(new byte[]{0x70,0x71,0x72})),"no key values in report");
         assertThat(report.contains("NO ES ZELDA JUGABLE"),"does not pretend to run BOTW");
 
