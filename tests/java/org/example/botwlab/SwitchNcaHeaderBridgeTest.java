@@ -89,8 +89,11 @@ public final class SwitchNcaHeaderBridgeTest {
             "f071a2b402c105ea37024133e24d6ef6212e8cc0175e1b6b32657d54f159daf6"),
             "XTS sector 0 differs from independent implementation");
         check(hex(Arrays.copyOfRange(cipher, 512, 544)).equals(
-            "b7d83a5910831ba82bed19878404c2cfb099d69f7ad608fbfc2cef09964f9850"),
+            "75a91a63c74ff510ba661fa0df1922edb099d69f7ad608fbfc2cef09964f9850"),
             "XTS sector 1 differs from independent implementation");
+        check(hex(Arrays.copyOfRange(cipher, 1024, 1056)).equals(
+            "ffac4c4e78416c98bfbae40c452bdd446999d1f3f50fcae24cd6dabe22911227"),
+            "XTS sector 2 differs from independent implementation");
         byte[] decrypted = SwitchNcaHeaderBridge.decryptHeader(cipher,key);
         check(Arrays.equals(plain, decrypted), "local decryption of synthetic header");
         Arrays.fill(decrypted,(byte)0);
