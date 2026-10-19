@@ -55,7 +55,7 @@ public final class SwitchNsoMod0AuditTest {
         byte[] badWidth=fixture();p64(badWidth,0x88,16);
         needed(!SwitchNsoMod0Audit.inspect(badWidth,0,0x300,0x40).valid,
                "reject nonstandard ELF64_RELAENT");
-        byte[] negativeDynamic=fixture();p32(negativeDynamic,0x24,0xfffffff0L);
+        byte[] negativeDynamic=fixture();p32(negativeDynamic,0x24,0x80000000L);
         needed(!SwitchNsoMod0Audit.inspect(negativeDynamic,0,0x300,0x40).valid,
                "reject invalid signed dynamic offset");
         needed(!SwitchNsoMod0Audit.inspect(good,0,0x300,0x41).valid,
