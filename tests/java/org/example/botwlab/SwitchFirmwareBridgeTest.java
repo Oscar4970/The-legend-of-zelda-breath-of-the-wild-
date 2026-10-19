@@ -91,7 +91,7 @@ public final class SwitchFirmwareBridgeTest {
                     new ByteArrayInputStream(keys.getBytes(StandardCharsets.US_ASCII)));
         check(still.contains("NCA reconocidos: 1"), "does not pretend to verify signatures");
         changed = encrypted.clone();
-        changed[0x210] ^= 0x55;
+        changed[0x200] ^= 0x55;
         String broken = SwitchFirmwareBridge.inspect(new ByteArrayInputStream(zipWith(changed)),
                     new ByteArrayInputStream(keys.getBytes(StandardCharsets.US_ASCII)));
         check(broken.contains("NCA reconocidos: 0"), "rejects tampered NCA magic");
