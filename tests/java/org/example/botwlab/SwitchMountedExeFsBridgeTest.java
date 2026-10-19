@@ -270,7 +270,7 @@ public final class SwitchMountedExeFsBridgeTest {
         Fixture invalidSegment=make(true);
         byte[] tampered=invalidSegment.reader.files.get(
             "0123456789abcdef0123456789abcdef.nca");
-        int plainTextOffset=0xE00+(16+2*24+9)+0x100+2;
+        int plainTextOffset=0xE00+(16+3*24+14)+0x100+2;
         tampered[plainTextOffset] ^= 1; // CTR plaintext byte, only text hash fails
         String brokenHash=invalidSegment.probe();
         assertThat(brokenHash.contains(".text: SHA-256 NO COINCIDE") &&
