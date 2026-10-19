@@ -219,17 +219,17 @@ public final class SwitchMountedExeFsBridge {
                                                                         try (SwitchNsoMemoryImage image =
                                                                              SwitchNsoMemoryImage.prepare(
                                                                                  nsoHeader,file.size,
-                                                                                 (offset,count) -> {
-                                                                                     if(offset<0 || count<0 ||
+                                                                                 (offset,segmentBytes) -> {
+                                                                                     if(offset<0 || segmentBytes<0 ||
                                                                                         offset>file.size ||
-                                                                                        count>file.size-offset)
+                                                                                        segmentBytes>file.size-offset)
                                                                                          throw new IOException(
                                                                                              "Modulo NSO fuera de limites");
                                                                                      try {
                                                                                          return readPartition(
                                                                                              reader,name,
                                                                                              moduleOffset+offset,
-                                                                                             count,sectionKey,upperIv,
+                                                                                             segmentBytes,sectionKey,upperIv,
                                                                                              encryption);
                                                                                      } catch (GeneralSecurityException e) {
                                                                                          throw new IOException(
