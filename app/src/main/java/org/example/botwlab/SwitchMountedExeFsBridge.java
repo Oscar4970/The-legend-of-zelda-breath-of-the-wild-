@@ -165,8 +165,9 @@ public final class SwitchMountedExeFsBridge {
                                         output.append("ExeFS candidato: PFS0 leído desde NSP cifrado.")
                                             .append(" Archivos: ").append(entries.size()).append('\n');
                                         for (Entry file:entries) {
-                                            if (!file.name.equals("main") && !file.name.equals("sdk")) continue;
-                                            String label=file.name.equals("main")?"main":"sdk";
+                                            if (!file.name.equals("main") && !file.name.equals("sdk") &&
+                                                !file.name.equals("rtld")) continue;
+                                            String label=file.name;
                                             long moduleOffset=root+metadataEnd+file.offset;
                                             if(file.size<4 || moduleOffset<root) continue;
                                             byte[] prefix=readPartition(reader,name,moduleOffset,4,
@@ -239,6 +240,10 @@ public final class SwitchMountedExeFsBridge {
                                                                             output.append(label).append(": ")
                                                                                 .append(image.summary())
                                                                                 .append('\n');
+                                                                            SwitchNsoMod0Audit.Result mod0=
+                                                                                SwitchNsoMod0Audit.inspect(image);
+                                                                            output.append(label).append(": ")
+                                                                                .append(mod0.report).append('\n');
                                                                         }
                                                                     }
                                                                 } catch (IOException |
@@ -271,7 +276,8 @@ public final class SwitchMountedExeFsBridge {
                   .append("PartitionFS leídos: ").append(pfs).append('\n')
                   .append("Módulos NSO0 detectados: ").append(nso).append('\n')
                   .append("NO se copió, guardó ni ejecutó código ni firmware.\n")
-                  .append("Los hashes de contenido y servicios Horizon/NVN siguen pendientes.\n")
+                  .append("Hashes NSO comprobados por modulo cuando se indica; integridad NCA completa pendiente.\n")
+                  .append("Relocaciones ELF64, servicios Horizon y NVN todavia NO implementados.\n")
                   .append("NO ES ZELDA JUGABLE.");
                 return output.toString();
             } finally {Arrays.fill(headerKey,(byte)0);}
