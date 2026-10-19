@@ -125,17 +125,21 @@ public final class SwitchMountedExeFsBridgeTest {
 
         byte[] partition=new byte[0x1000];
         System.arraycopy("PFS0".getBytes(StandardCharsets.US_ASCII),0,partition,0,4);
-        put32(partition,4,2);
-        put32(partition,8,9); // "main\0sdk\0"
+        put32(partition,4,3);
+        put32(partition,8,14); // "main\0sdk\0rtld\0"
         put64(partition,16,0);
         put64(partition,24,0x200);
         put32(partition,32,0);
         put64(partition,40,0x200);
         put64(partition,48,0x200);
         put32(partition,56,5);
-        System.arraycopy("main\0sdk\0".getBytes(StandardCharsets.US_ASCII),0,partition,64,9);
-        int dataStart=16+2*24+9;
-        for (int moduleBase : new int[]{dataStart,dataStart+0x200}) {
+        put64(partition,64,0x400);
+        put64(partition,72,0x200);
+        put32(partition,80,9);
+        System.arraycopy("main\0sdk\0rtld\0".getBytes(StandardCharsets.US_ASCII),
+            0,partition,88,14);
+        int dataStart=16+3*24+14;
+        for (int moduleBase : new int[]{dataStart,dataStart+0x200,dataStart+0x400}) {
             System.arraycopy("NSO0".getBytes(StandardCharsets.US_ASCII),
                 0,partition,moduleBase,4);
             // Three synthetic sections: LZ4 literal-only .text, raw .rodata,
@@ -206,12 +210,15 @@ public final class SwitchMountedExeFsBridgeTest {
         assertThat(report.contains("PartitionFS leídos: 1"),"decrypts synthetic PFS0");
         assertThat(report.contains("main: firma NSO0 válida"),"main header via CTR");
         assertThat(report.contains("sdk: firma NSO0 válida"),"sdk header via CTR");
-        assertThat(report.contains("Módulos NSO0 detectados: 2"),"two synthetic NSO headers");
+        assertThat(report.contains("Módulos NSO0 detectados: 3"),"two synthetic NSO headers");
         assertThat(report.contains("main: Validacion de segmentos NSO0:") &&
                    report.contains("sdk: Validacion de segmentos NSO0:"),
             "checks both modules' decoded SHA-256 values");
-        assertThat(report.split("Segmentos verificados: 3/3", -1).length==3,
-            "both main and sdk have three verified LZ4/raw sections");
+        assertThat(report.split("Segmentos verificados: 3/3", -1).length==4,
+            "main sdk and rtld each have three verified LZ4/raw sections");
+        assertThat(report.contains("rtld: firma NSO0 válida") &&
+                   report.contains("rtld: Imagen NSO temporal construida y verificada"),
+            "executable runtime linker candidate is discovered and mapped transiently");
         assertThat(report.contains("main: Imagen NSO temporal construida y verificada") &&
                    report.contains("sdk: Imagen NSO temporal construida y verificada"),
             "both modules mapped into temporary nonexecutable memory");
@@ -228,7 +235,7 @@ public final class SwitchMountedExeFsBridgeTest {
 
         Fixture keyArea=make(false);
         String alternate=keyArea.probe();
-        assertThat(alternate.contains("Módulos NSO0 detectados: 2"),
+        assertThat(alternate.contains("Módulos NSO0 detectados: 3"),
             "key area AES-ECB resolution alternative works");
 
         Fixture wrong=make(true);
@@ -267,7 +274,7 @@ public final class SwitchMountedExeFsBridgeTest {
         tampered[plainTextOffset] ^= 1; // CTR plaintext byte, only text hash fails
         String brokenHash=invalidSegment.probe();
         assertThat(brokenHash.contains(".text: SHA-256 NO COINCIDE") &&
-                   brokenHash.contains("Módulos NSO0 detectados: 2"),
+                   brokenHash.contains("Módulos NSO0 detectados: 3"),
             "tampered NSO content must not pass segment digest");
 
         Fixture corrupted=make(true);
