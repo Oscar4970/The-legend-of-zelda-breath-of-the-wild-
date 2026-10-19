@@ -45,6 +45,7 @@ jobs:
           javac -d /tmp/nca-bridge-java \
             app/src/main/java/org/example/botwlab/SwitchNcaHeaderBridge.java \
             app/src/main/java/org/example/botwlab/SwitchNsoMetadataAudit.java \
+            app/src/main/java/org/example/botwlab/SwitchNsoSectionHashes.java \
             app/src/main/java/org/example/botwlab/SwitchMountedExeFsBridge.java \
             tests/java/org/example/botwlab/SwitchMountedExeFsBridgeTest.java \
             tests/java/org/example/botwlab/SwitchNsoMetadataAuditTest.java
