@@ -45,6 +45,11 @@ jobs:
           g++ -std=c++20 -O2 -Wall -Wextra -Werror \
             tests/switch_nca_bridge_test.cpp -o /tmp/switch_nca_bridge_test
           /tmp/switch_nca_bridge_test
+      - name: Verify NSP runtime VFS on synthetic sparse 14GiB file
+        run: |
+          g++ -std=c++20 -O2 -Wall -Wextra -Werror \
+            tests/switch_nsp_vfs_test.cpp -o /tmp/switch_nsp_vfs_test
+          /tmp/switch_nsp_vfs_test
       - name: Deep Switch ROM inspector tests (synthetic NSP XCI NSO NRO only)
         run: |
           g++ -std=c++20 -Wall -Wextra -Werror -O2 \
