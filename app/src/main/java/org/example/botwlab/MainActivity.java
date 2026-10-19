@@ -24,6 +24,7 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_FIRMWARE_BRIDGE_ZIP = 83;
     private static final int REQUEST_FIRMWARE_BRIDGE_KEYS = 84;
     private static final int REQUEST_RUNTIME_VFS_NSP = 85;
+    private static final int REQUEST_RUNTIME_EXEFS_KEYS = 86;
     private Uri firmwareBridgeZipUri;
     private Uri bridgeNspUri;
     // No Nintendo-derived game library is distributed in this repository.
@@ -264,6 +265,20 @@ public final class MainActivity extends Activity {
             startActivityForResult(pick, REQUEST_RUNTIME_VFS_NSP);
         });
         body.addView(vfsMount);
+        Button exefsProbe = new Button(this);
+        exefsProbe.setText("RUNTIME: buscar main/sdk dentro del NSP montado (claves locales)");
+        exefsProbe.setOnClickListener(v -> {
+            shareRomReport.setEnabled(false);
+            lastRomReport = "";
+            scanResult.setText("Monta primero el NSP con RUNTIME VFS; después selecciona "
+                + "prod.keys para intentar leer ExeFS por AES-CTR sin extraer archivos.");
+            Intent chooser = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            chooser.addCategory(Intent.CATEGORY_OPENABLE);
+            chooser.setType("*/*");
+            startActivityForResult(chooser, REQUEST_RUNTIME_EXEFS_KEYS);
+        });
+        body.addView(exefsProbe);
+
         Button vfsUnmount = new Button(this);
         vfsUnmount.setText("RUNTIME: DESMONTAR NSP");
         vfsUnmount.setOnClickListener(v -> {
@@ -373,6 +388,31 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_RUNTIME_EXEFS_KEYS) {
+            if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
+            final Uri selected = data.getData();
+            scanResult.setText("RUNTIME ExeFS: comprobando ticket/clave y PartitionFS, "
+                + "sin exportar código ni copiar el NSP...");
+            new Thread(() -> {
+                String result;
+                try (InputStream keys = getContentResolver().openInputStream(selected)) {
+                    System.loadLibrary("botwgpu");
+                    result = SwitchMountedExeFsBridge.probe(keys);
+                } catch (Exception | LinkageError error) {
+                    result = "RUNTIME ExeFS: prueba incompleta ("
+                        + error.getClass().getSimpleName() + "). No se modificaron archivos; "
+                        + "revisa que el NSP esté montado y hayas seleccionado prod.keys.";
+                }
+                final String report = result;
+                runOnUiThread(() -> {
+                    scanResult.setText(report);
+                    lastRomReport = report;
+                    shareRomReport.setEnabled(true);
+                });
+            }, "BotwMountedExeFsProbe").start();
+            return;
+        }
+
         if (requestCode == REQUEST_RUNTIME_VFS_NSP) {
             if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
             final Uri picked = data.getData();
