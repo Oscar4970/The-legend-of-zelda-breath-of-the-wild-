@@ -177,6 +177,20 @@ public final class SwitchMountedExeFsBridge {
                                                     output.append(label)
                                                       .append(": firma NSO0 válida en flujo descifrado (")
                                                       .append(file.size).append(" bytes).\n");
+                                                    if (file.size>=SwitchNsoMetadataAudit.HEADER_BYTES) {
+                                                        byte[] nsoHeader=readPartition(reader,name,
+                                                            moduleOffset,SwitchNsoMetadataAudit.HEADER_BYTES,
+                                                            sectionKey,upperIv,encryption);
+                                                        try {
+                                                            SwitchNsoMetadataAudit.Result info=
+                                                                SwitchNsoMetadataAudit.inspect(
+                                                                    nsoHeader,file.size);
+                                                            output.append(label).append(": ")
+                                                                .append(info.report).append('\n');
+                                                        } finally {
+                                                            Arrays.fill(nsoHeader,(byte)0);
+                                                        }
+                                                    }
                                                 } else {
                                                     output.append(label)
                                                       .append(": archivo localizado, sin firma NSO0.\n");
