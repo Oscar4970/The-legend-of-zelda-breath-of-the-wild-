@@ -144,6 +144,8 @@ public final class SwitchMountedExeFsBridgeTest {
         reader.files.put("0123456789abcdef0123456789abcdef.nca",nca);
         if(ticketRights) {
             byte[] ticket=new byte[0x400];
+            // Standard RSA-2048 SHA-256 ticket signature format (TicketData at 0x140).
+            put32(ticket,0,0x10004);
             System.arraycopy("Root-CA".getBytes(StandardCharsets.US_ASCII),
                 0,ticket,0x140,7);
             System.arraycopy(rights,0,ticket,0x2A0,16);
@@ -181,9 +183,31 @@ public final class SwitchMountedExeFsBridgeTest {
         Fixture wrong=make(true);
         wrong.reader.files.remove("0123456789abcdef0123456789abcdef.tik");
         String withoutTicket=wrong.probe();
-        assertThat(withoutTicket.contains("falta una clave de contenido") &&
+        assertThat(withoutTicket.contains("no contiene .tik") &&
             withoutTicket.contains("PartitionFS leídos: 0"),
             "missing ticket must not fake content decryption");
+
+        Fixture wrongId=make(true);
+        byte[] wrongTicket=wrongId.reader.files.get("0123456789abcdef0123456789abcdef.tik");
+        wrongTicket[0x2A0] ^= 1;
+        String mismatch=wrongId.probe();
+        assertThat(mismatch.contains("no coincide con los tickets compatibles") &&
+            mismatch.contains("Claves de secciones resueltas: 0"),
+            "safe diagnosis for mismatched ticket rights ID");
+
+        Fixture invalidSignature=make(true);
+        byte[] unsigned=invalidSignature.reader.files.get("0123456789abcdef0123456789abcdef.tik");
+        put32(unsigned,0,0xFFFFFFFFL);
+        String unsupported=invalidSignature.probe();
+        assertThat(unsupported.contains("tipo de firma no es reconocido"),
+            "unsupported ticket signature should be reported, no keys shown");
+
+        Fixture personal=make(true);
+        byte[] personalTicket=personal.reader.files.get("0123456789abcdef0123456789abcdef.tik");
+        personalTicket[0x281]=1;
+        String personalReport=personal.probe();
+        assertThat(personalReport.contains("ticket coincidente, pero personalizado"),
+            "personalized ticket must not be treated as common");
 
         Fixture corrupted=make(true);
         byte[] bytes=corrupted.reader.files.get("0123456789abcdef0123456789abcdef.nca");
