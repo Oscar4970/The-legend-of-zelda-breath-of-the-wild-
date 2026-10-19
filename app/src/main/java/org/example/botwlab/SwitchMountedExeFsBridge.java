@@ -93,11 +93,13 @@ public final class SwitchMountedExeFsBridge {
                             output.append("PROGRAM: tamaño declarado incoherente.\n");
                             continue;
                         }
-                        byte[] sectionKey = sectionKey(reader,keys,header,tickets);
-                        if (sectionKey == null) {
-                            output.append("PROGRAM: falta una clave de contenido compatible; no se leyó ExeFS.\n");
+                        KeyResolution resolution = sectionKey(reader,keys,header,tickets);
+                        if (resolution.key == null) {
+                            output.append("PROGRAM: ").append(resolution.detail).append('\n');
                             continue;
                         }
+                        byte[] sectionKey = resolution.key;
+                        output.append("PROGRAM: ").append(resolution.detail).append('\n');
                         resolved++;
                         try {
                             for (int slot=0;slot<4;slot++) {
@@ -239,50 +241,95 @@ public final class SwitchMountedExeFsBridge {
         return items;
     }
 
-    private static byte[] sectionKey(Reader reader, LocalKeys keys, byte[] header,
+    // Reports *only* a processing stage; never print tickets, rights IDs or key bytes.
+    private static final class KeyResolution {
+        final byte[] key;
+        final String detail;
+        KeyResolution(byte[] bytes, String stage) {key=bytes;detail=stage;}
+    }
+
+    private static int littleEndian32(byte[] data,int offset) {
+        return (int)le32(data,offset);
+    }
+
+    private static int ticketDataBase(byte[] ticket) {
+        if(ticket.length<4)return -1;
+        int signatureType=littleEndian32(ticket,0);
+        // TicketData starts after signed header: size depends on signature algorithm.
+        // Values from Eden Core::Crypto::RSA4096Ticket/RSA2048Ticket/ECDSATicket.
+        if(signatureType==0x10000 || signatureType==0x10003)return 0x240;
+        if(signatureType==0x10001 || signatureType==0x10004)return 0x140;
+        if(signatureType==0x10002 || signatureType==0x10005)return 0x80;
+        return -1;
+    }
+
+    private static KeyResolution sectionKey(Reader reader, LocalKeys keys, byte[] header,
                                      List<String> tickets)
             throws IOException, GeneralSecurityException {
         int revision=Math.max(header[0x206]&255,header[0x220]&255);
         int master=Math.max(1,revision)-1;
-        if(master>31) return null;
+        if(master>31) return new KeyResolution(null,
+            "generación de cifrado fuera de rango soportado; no hay acceso ExeFS.");
         byte[] rights=Arrays.copyOfRange(header,0x230,0x240);
         try {
             boolean hasRights=false;
             for(byte b:rights) if(b!=0) {hasRights=true;break;}
             if(hasRights) {
+                // The game uses a rights-protected title key; key-area keys are not
+                // a substitute. The matching ticket is required.
                 byte[] kek=keys.lookup(String.format(Locale.ROOT,"titlekek_%02X",master),16);
-                if (kek==null) return null;
+                if (kek==null) return new KeyResolution(null,
+                    "NCA con Rights ID, pero falta la entrada titlekek para su generación.");
                 try {
+                    if(tickets.isEmpty())return new KeyResolution(null,
+                        "NCA con Rights ID y titlekek disponible, pero el NSP no contiene .tik.");
+                    int unknown=0, mismatched=0, malformed=0, personalized=0;
                     for (String path:tickets) {
                         long size=reader.size(path);
-                        if(size<0x300 || size>0x10000) continue;
+                        if(size<0xC0 || size>0x10000) {malformed++;continue;}
                         byte[] ticket=read(reader,path,0,(int)Math.min(size,0x500));
                         try {
-                            // Support the common RSA-2048 ticket used by NSP.
-                            if(ticket.length<0x2B0 ||
-                               ticket[0x140]!='R' || ticket[0x141]!='o' ||
-                               ticket[0x142]!='o' || ticket[0x143]!='t' ||
-                               (ticket[0x281]&255)!=0) continue;
-                            byte[] candidate=Arrays.copyOfRange(ticket,0x2A0,0x2B0);
+                            int base=ticketDataBase(ticket);
+                            if(base<0){unknown++;continue;}
+                            // rights_id follows issuer, title_key_block and ticket fields
+                            // at offset +0x160, regardless of signature scheme.
+                            if(ticket.length<base+0x170){malformed++;continue;}
+                            byte[] candidate=Arrays.copyOfRange(ticket,base+0x160,base+0x170);
                             boolean matches=MessageDigest.isEqual(rights,candidate);
                             Arrays.fill(candidate,(byte)0);
-                            if(!matches) continue;
-                            byte[] enc=Arrays.copyOfRange(ticket,0x180,0x190);
-                            try{return decryptEcb(kek,enc);}
-                            finally {Arrays.fill(enc,(byte)0);}
+                            if(!matches){mismatched++;continue;}
+                            int type=ticket[base+0x141]&255;
+                            if(type!=0){personalized++;continue;}
+                            byte[] enc=Arrays.copyOfRange(ticket,base+0x40,base+0x50);
+                            try {
+                                return new KeyResolution(decryptEcb(kek,enc),
+                                    "clave de contenido resuelta con ticket común local; "
+                                    + "ExeFS todavía sin validar.");
+                            } finally {Arrays.fill(enc,(byte)0);}
                         } finally {Arrays.fill(ticket,(byte)0);}
                     }
-                    return null;
+                    if(personalized>0)return new KeyResolution(null,
+                        "ticket coincidente, pero personalizado: este puente todavía no lo admite.");
+                    if(mismatched>0)return new KeyResolution(null,
+                        "titlekek disponible, pero el Rights ID del NCA no coincide con los "
+                        +"tickets compatibles del NSP (sin revelar identificadores).");
+                    if(unknown>0)return new KeyResolution(null,
+                        "existe .tik, pero su tipo de firma no es reconocido por el lector.");
+                    return new KeyResolution(null,
+                        "hay tickets, pero ninguno tiene una estructura común utilizable.");
                 } finally {Arrays.fill(kek,(byte)0);}
             }
             int index=header[0x207]&255;
-            if(index>2) return null;
+            if(index>2)return new KeyResolution(null,
+                "NCA sin Rights ID con índice de clave de área no soportado.");
             String[] area={"application","ocean","system"};
             byte[] kek=keys.lookup(String.format(Locale.ROOT,
                 "key_area_key_%s_%02X",area[index],master),16);
-            if(kek==null)return null;
+            if(kek==null)return new KeyResolution(null,
+                "NCA sin Rights ID, pero falta su key_area_key local.");
             byte[] enc=Arrays.copyOfRange(header,0x320,0x330);
-            try {return decryptEcb(kek,enc);}
+            try{return new KeyResolution(decryptEcb(kek,enc),
+                "clave de sección resuelta mediante key-area AES-ECB; ExeFS sin validar.");}
             finally {Arrays.fill(kek,(byte)0);Arrays.fill(enc,(byte)0);}
         } finally {Arrays.fill(rights,(byte)0);}
     }
