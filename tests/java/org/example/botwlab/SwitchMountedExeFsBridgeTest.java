@@ -138,14 +138,39 @@ public final class SwitchMountedExeFsBridgeTest {
         for (int moduleBase : new int[]{dataStart,dataStart+0x200}) {
             System.arraycopy("NSO0".getBytes(StandardCharsets.US_ASCII),
                 0,partition,moduleBase,4);
-            // One valid synthetic .text section at NSO offset 0x100,
-            // within this 512-byte module; all other sections empty.
+            // Three synthetic sections: LZ4 literal-only .text, raw .rodata,
+            // and overlapping-copy LZ4 .data. All hashes are SHA-256 of
+            // the DECOMPRESSED bytes (never ciphertext or compressed blocks).
+            put32(partition,moduleBase+0x0c,0x3D); // compression text/data, hash all
             put32(partition,moduleBase+0x10,0x100);
             put32(partition,moduleBase+0x14,0);
             put32(partition,moduleBase+0x18,16);
-            put32(partition,moduleBase+0x60,16);
+            put32(partition,moduleBase+0x60,18);
+            put32(partition,moduleBase+0x20,0x120);
+            put32(partition,moduleBase+0x24,0x100);
+            put32(partition,moduleBase+0x28,12);
+            put32(partition,moduleBase+0x64,12);
+            put32(partition,moduleBase+0x30,0x140);
+            put32(partition,moduleBase+0x34,0x200);
+            put32(partition,moduleBase+0x38,16);
+            put32(partition,moduleBase+0x68,7);
             put32(partition,moduleBase+0x3c,32);
-            for (int i=0;i<16;i++)partition[moduleBase+0x100+i]=(byte)(0x50+i);
+            byte[] textSection=new byte[16];
+            for(int i=0;i<16;i++)textSection[i]=(byte)(0x50+i);
+            partition[moduleBase+0x100]=(byte)0xF0;
+            partition[moduleBase+0x101]=1; // LZ4 literal length 16
+            System.arraycopy(textSection,0,partition,moduleBase+0x102,16);
+            byte[] rodata="HELLO-RODATA".getBytes(StandardCharsets.US_ASCII);
+            System.arraycopy(rodata,0,partition,moduleBase+0x120,12);
+            byte[] packedData={0x48,'A','B','C','D',4,0};
+            System.arraycopy(packedData,0,partition,moduleBase+0x140,7);
+            byte[] fullData="ABCDABCDABCDABCD".getBytes(StandardCharsets.US_ASCII);
+            MessageDigest hasher=MessageDigest.getInstance("SHA-256");
+            System.arraycopy(hasher.digest(textSection),0,partition,moduleBase+0xA0,32);
+            hasher.reset();
+            System.arraycopy(hasher.digest(rodata),0,partition,moduleBase+0xC0,32);
+            hasher.reset();
+            System.arraycopy(hasher.digest(fullData),0,partition,moduleBase+0xE0,32);
         }
         byte[] encryptedPart=ctrCrypt(partition,contentKey,upper,0xE00);
         System.arraycopy(encryptedPart,0,nca,0xE00,encryptedPart.length);
@@ -182,6 +207,12 @@ public final class SwitchMountedExeFsBridgeTest {
         assertThat(report.contains("main: firma NSO0 válida"),"main header via CTR");
         assertThat(report.contains("sdk: firma NSO0 válida"),"sdk header via CTR");
         assertThat(report.contains("Módulos NSO0 detectados: 2"),"two synthetic NSO headers");
+        assertThat(report.contains("main: Validacion de segmentos NSO0:") &&
+                   report.contains("sdk: Validacion de segmentos NSO0:"),
+            "checks both modules' decoded SHA-256 values");
+        assertThat(report.split("Segmentos verificados: 3/3", -1).length==3,
+            "both main and sdk have three verified LZ4/raw sections");
+
         assertThat(report.contains("main: cabecera NSO0 estructuralmente coherente"),
             "validates main segment layout from mounted encrypted NSP");
         assertThat(report.contains("sdk: cabecera NSO0 estructuralmente coherente"),
@@ -222,6 +253,16 @@ public final class SwitchMountedExeFsBridgeTest {
         String personalReport=personal.probe();
         assertThat(personalReport.contains("ticket coincidente, pero personalizado"),
             "personalized ticket must not be treated as common");
+
+        Fixture invalidSegment=make(true);
+        byte[] tampered=invalidSegment.reader.files.get(
+            "0123456789abcdef0123456789abcdef.nca");
+        int plainTextOffset=0xE00+(16+2*24+9)+0x100+2;
+        tampered[plainTextOffset] ^= 1; // CTR plaintext byte, only text hash fails
+        String brokenHash=invalidSegment.probe();
+        assertThat(brokenHash.contains(".text: SHA-256 NO COINCIDE") &&
+                   brokenHash.contains("Módulos NSO0 detectados: 2"),
+            "tampered NSO content must not pass segment digest");
 
         Fixture corrupted=make(true);
         byte[] bytes=corrupted.reader.files.get("0123456789abcdef0123456789abcdef.nca");
