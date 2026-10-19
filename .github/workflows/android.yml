@@ -46,10 +46,13 @@ jobs:
             app/src/main/java/org/example/botwlab/SwitchNcaHeaderBridge.java \
             app/src/main/java/org/example/botwlab/SwitchNsoMetadataAudit.java \
             app/src/main/java/org/example/botwlab/SwitchNsoSectionHashes.java \
+            app/src/main/java/org/example/botwlab/SwitchNsoMemoryImage.java \
             app/src/main/java/org/example/botwlab/SwitchMountedExeFsBridge.java \
             tests/java/org/example/botwlab/SwitchMountedExeFsBridgeTest.java \
-            tests/java/org/example/botwlab/SwitchNsoMetadataAuditTest.java
+            tests/java/org/example/botwlab/SwitchNsoMetadataAuditTest.java \
+            tests/java/org/example/botwlab/SwitchNsoMemoryImageTest.java
           java -cp /tmp/nca-bridge-java org.example.botwlab.SwitchNsoMetadataAuditTest
+          java -cp /tmp/nca-bridge-java org.example.botwlab.SwitchNsoMemoryImageTest
           java -cp /tmp/nca-bridge-java org.example.botwlab.SwitchMountedExeFsBridgeTest
           g++ -std=c++20 -O2 -Wall -Wextra -Werror \
             tests/switch_nca_bridge_test.cpp -o /tmp/switch_nca_bridge_test
