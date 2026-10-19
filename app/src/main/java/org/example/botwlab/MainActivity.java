@@ -21,6 +21,9 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_NSO = 73;
     private static final int REQUEST_NCA_BRIDGE_NSP = 81;
     private static final int REQUEST_NCA_BRIDGE_KEYS = 82;
+    private static final int REQUEST_FIRMWARE_BRIDGE_ZIP = 83;
+    private static final int REQUEST_FIRMWARE_BRIDGE_KEYS = 84;
+    private Uri firmwareBridgeZipUri;
     private Uri bridgeNspUri;
     // No Nintendo-derived game library is distributed in this repository.
     private boolean hasPrivateGameAndData() {
@@ -233,6 +236,20 @@ public final class MainActivity extends Activity {
             startActivityForResult(pick, REQUEST_NCA_BRIDGE_NSP);
         });
         body.addView(ncaBridge);
+        Button firmwareBridge = new Button(this);
+        firmwareBridge.setText("PUENTE FIRMWARE: inspeccionar ZIP + prod.keys localmente (NO EJECUTA)");
+        firmwareBridge.setOnClickListener(v -> {
+            firmwareBridgeZipUri = null;
+            shareRomReport.setEnabled(false);
+            lastRomReport = "";
+            scanResult.setText("1/2: selecciona el ZIP del firmware de Switch. "
+                + "La app no copiará ni instalará firmware.");
+            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            pick.addCategory(Intent.CATEGORY_OPENABLE);
+            pick.setType("*/*");
+            startActivityForResult(pick, REQUEST_FIRMWARE_BRIDGE_ZIP);
+        });
+        body.addView(firmwareBridge);
         shareRomReport = new Button(this);
         shareRomReport.setText("COMPARTIR INFORME DE ANALISIS (solo texto)");
         shareRomReport.setEnabled(false);
@@ -330,6 +347,45 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_FIRMWARE_BRIDGE_ZIP) {
+            if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
+            firmwareBridgeZipUri = data.getData();
+            scanResult.setText("2/2: selecciona prod.keys desde tu teléfono. "
+                + "Se utilizará solo en memoria.");
+            Intent keys = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            keys.addCategory(Intent.CATEGORY_OPENABLE);
+            keys.setType("*/*");
+            startActivityForResult(keys, REQUEST_FIRMWARE_BRIDGE_KEYS);
+            return;
+        }
+        if (requestCode == REQUEST_FIRMWARE_BRIDGE_KEYS) {
+            if (resultCode != RESULT_OK || data == null || data.getData() == null ||
+                firmwareBridgeZipUri == null) return;
+            final Uri firmwareUri = firmwareBridgeZipUri;
+            firmwareBridgeZipUri = null;
+            final Uri keysUri = data.getData();
+            scanResult.setText("Inspeccionando NCA dentro del firmware ZIP, localmente... "
+                + "El archivo puede tardar; se lee sin extraerlo.");
+            new Thread(() -> {
+                String report;
+                try (InputStream zipFile = getContentResolver().openInputStream(firmwareUri);
+                     InputStream keysFile = getContentResolver().openInputStream(keysUri)) {
+                    report = SwitchFirmwareBridge.inspect(zipFile, keysFile);
+                } catch (Exception error) {
+                    report = "PUENTE FIRMWARE: análisis no completado ("
+                        + error.getClass().getSimpleName()
+                        + "). Comprueba que seleccionaste el ZIP correcto y un prod.keys local. "
+                        + "No se modificó el firmware ni se enviaron claves.";
+                }
+                final String value = report;
+                runOnUiThread(() -> {
+                    scanResult.setText(value);
+                    lastRomReport = value;
+                    shareRomReport.setEnabled(true);
+                });
+            }, "BotwLocalFirmwareInventory").start();
+            return;
+        }
         if (requestCode == REQUEST_NCA_BRIDGE_NSP) {
             if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
             bridgeNspUri = data.getData();
